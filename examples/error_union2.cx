@@ -1,0 +1,45 @@
+//! Resultado1: 19\nResultado2: 10\n
+include <stdio.h>
+
+enum Error {
+    Equals
+}
+
+alias E = int!Error
+alias Fun = E(E, E)
+
+struct Calc {
+    static E sum(E x, E y) {
+        return x.ok + y.ok;
+    }
+}
+
+struct Other {
+    static Fun getSum() {
+        return &Calc.sum;
+    }
+
+    static int callSum(Fun fn, E x, E y) {
+        return fn(x, y).ok;
+    }
+}
+
+E sum(int x, int y) {
+    if x == y
+        return Error.Equals;
+    return x + y;
+}
+
+int main() {
+    E result = sum(10, 9);
+
+    if !result.valid {
+        printf("Erro ao somar: %d\n", result.error);
+        return 1;
+    }
+
+    printf("Resultado1: %d\n", result.ok);
+    int res = Other.callSum(Other.getSum(), sum(1, 2), sum(3, 4));
+    printf("Resultado2: %d\n", res);
+    return 0;
+}

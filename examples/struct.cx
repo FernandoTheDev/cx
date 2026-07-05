@@ -1,0 +1,15 @@
+//! Fernando\n
+include <stdio.h>
+
+int main() {
+    Usuario u = {"Fernando"};
+    printf("%s\n", u.get());
+    return 0;
+}
+
+struct Usuario {
+    char* nome;
+    char* get() {
+        return self.nome;
+    }
+}

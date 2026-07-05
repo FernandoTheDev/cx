@@ -1,0 +1,14 @@
+//! opt: 67\n
+include <stdio.h>
+
+union Optional {
+    char* value;
+    int i;
+}
+
+int main() {
+    Optional opt;
+    opt.i = 67;
+    printf("opt: %d\n", opt.i);
+    return 0;
+}

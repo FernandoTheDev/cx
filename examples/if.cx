@@ -1,0 +1,14 @@
+//# 67
+include <stdlib.h>
+
+int main() {
+    defer exit(67);
+
+    if (void*)0 == null {
+        return 1;
+    } else {
+        int x;
+        int y;
+    }
+    return 0;
+}

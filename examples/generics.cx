@@ -1,0 +1,14 @@
+//! result: 67\n
+include <stdio.h>
+
+struct Calc<I, F> {
+    static I sum(I x, F y) {
+        return (I) x + y;
+    }
+}
+
+int main() {
+    int res = Calc<int, float>.sum(60, 7.0F);
+    printf("result: %d\n", res);
+    return 0;
+}

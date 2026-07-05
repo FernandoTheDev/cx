@@ -1,0 +1,9 @@
+//! 0.000000\n
+include <stdio.h>
+
+int main() {
+    int val1 = 67;
+    float val2 = *(float*)&val1;
+    printf("%f\n", val2);
+    return 0;
+}

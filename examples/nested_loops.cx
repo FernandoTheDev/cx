@@ -1,0 +1,32 @@
+//# 29
+include <stdio.h>
+
+int main() {
+    // triangulo de asteriscos, so pra estressar 3 niveis de loop
+    int rows = 5;
+    for (int i = 1; i <= rows; i++) {
+        for (int j = 0; j < rows - i; j++) {
+            printf(" ");
+        }
+        for (int k = 0; k < (2 * i - 1); k++) {
+            printf("*");
+        }
+        printf("\n");
+    }
+
+    // soma de quadrados de 1 a 10 via loop aninhado (soma cumulativa manual)
+    int total = 0;
+    for (int i = 1; i <= 10; i++) {
+        int square = 0;
+        for (int j = 0; j < i; j++) {
+            square = square + i;
+        }
+        total = total + square;
+    }
+
+    // total deve ser 1+4+9+...+100 = 385, mas vamos subtrair
+    // algo pra testar aritmetica misturada com o resultado do loop
+    total = total - 100;
+
+    return total; // 285
+}

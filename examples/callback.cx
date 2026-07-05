@@ -1,0 +1,26 @@
+//! 30\n
+include <stdio.h>
+
+alias Fun = int(int, int)
+
+struct Calc {
+    static int sum(int x, int y) {
+        return x + y;
+    }
+}
+
+struct Other {
+    static Fun getSum() {
+        return &Calc.sum;
+    }
+
+    static int callSum(Fun fn, int x, int y) {
+        return fn(x, y);
+    }
+}
+
+int main() {
+    Fun fn = Other.getSum();
+    printf("%d\n", Other.callSum(fn, 10, 20));
+    return 0;
+}

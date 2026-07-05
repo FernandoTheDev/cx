@@ -1,0 +1,32 @@
+//! Array sorted by Insertion Sort: 5 6 11 12 13 \n
+include <stdio.h>
+
+void insertionSort(int[] arr, int n) {
+    int key; int j;
+    for (int i = 1; i < n; i++) {
+        key = arr[i];
+        j = i - 1; 
+        // Move elements that are greater than the key to one position ahead
+        while j >= 0 && arr[j] > key {
+            int x = j + 1; // TODO
+            arr[x] = arr[j]; 
+            j = j - 1; 
+        }
+        int x = j + 1; // TODO
+        arr[x] = key; 
+    }
+}
+
+int main() {
+    int[] data = [12, 11, 13, 5, 6];
+    int n = sizeof(data) / sizeof(data[0]); 
+
+    insertionSort(data, n); 
+
+    printf("Array sorted by Insertion Sort: "); 
+    for (int i = 0; i < n; i++) {
+        printf("%d ", data[i]); 
+    }
+    printf("\n"); 
+    return 0;
+}

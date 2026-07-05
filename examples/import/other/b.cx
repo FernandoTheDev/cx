@@ -1,0 +1,6 @@
+import other."c.cx";
+include <stdio.h>
+
+void helloFromB() {
+    printf("Hello from B.\n");
+}

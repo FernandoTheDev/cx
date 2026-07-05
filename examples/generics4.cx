@@ -1,0 +1,40 @@
+//# 67
+include <stdlib.h>
+
+struct Foo<T> {
+    T val;
+}
+
+struct Bar<T> {
+    Foo<T>** s;
+}
+
+struct Cool<F> {
+    static Entry<F>* e(char* key, F val) {
+        return Entry<F>.create(key, val);
+    }
+}
+
+struct Entry<V> {
+    char* key;
+    V value;
+    Entry<V>* next;
+
+    static Entry<V>* create(char* key, V value) {
+        Entry<V>* e = malloc(sizeof(Entry<V>));
+        e.key = key;
+        e.value = value;
+        e.next = null;
+        return e;
+    }
+}
+
+int main() {
+    Foo<int> foo = {0};
+    Foo<int>* f = &foo;
+    Bar<int> bar = {&f};
+    (*bar.s).val = 67;
+    Cool<int>.e("Fernando", 18);
+    // Entry<int>* entry = Entry<int>.create("Fernando", 37);
+    return foo.val;
+}

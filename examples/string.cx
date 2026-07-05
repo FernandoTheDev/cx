@@ -1,0 +1,22 @@
+//# 8
+include <stdio.h>
+
+int main() {
+    char* s1 = "Fernando";
+    char* s2 = "Kauanny";
+
+    if s1 == s2 {
+        return 1;
+    }
+
+    if s1 === s2 {
+        return 1;
+    }
+
+    for (int i = 0; i < s1.length; i++) {
+        printf("%d\n", s1.length);
+        printf("%c ", s1[i]);
+    }
+
+    return s1.length;
+}

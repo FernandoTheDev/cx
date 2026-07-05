@@ -1,0 +1,15 @@
+//# 0
+import other.b; // import "other/b"; OR import "other/b.cx";  
+include <stdio.h>
+
+void helloFromA() {
+    printf("Hello from A.\n");
+}
+
+int main() {
+    helloFromA();
+    helloFromB();
+    helloFromC();
+
+    return 0;
+}

@@ -1,0 +1,11 @@
+{
+	"name": "cx",
+	"description": "The Cx Programming Language.",
+	"license": "Apache-2.0",
+	"targetName": "cx",
+	"targetPath": ".",
+	"copyright": "Copyright © 2026, Fernando Dev",
+	"authors": [
+		"Fernando Dev"
+	]
+}

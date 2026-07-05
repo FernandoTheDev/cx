@@ -1,0 +1,7 @@
+//# 67
+int main() {
+    int[] arr1 = [3];
+    int[3] arr2 = [3, 10, 2];
+    int[] arr4 = {4};
+    return arr1[0] + arr2[0] * arr2[1] * arr2[2] + arr4[0];
+}

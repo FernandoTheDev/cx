@@ -1,0 +1,33 @@
+//# 1
+include <stdlib.h>
+
+enum Color {
+    Red,
+    Green
+}
+
+struct C {
+    Color color;
+    Usuario* o;
+}
+
+struct Usuario {
+    C c;
+    char* name;
+}
+
+int main() {
+    Usuario* o = calloc(1, sizeof(Usuario));
+    defer free(o);
+    o.c.color = Color.Red;
+    o.name = "João";
+
+    Usuario u = {{Color.Red, o}, "Fernando"};
+    u.c.color = Color.Green;
+    u.c.o.c.color = Color.Green;
+
+    if (u.c.color == u.c.o.c.color)
+        return 1;
+
+    return 0;
+}

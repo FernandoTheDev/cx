@@ -1,0 +1,122 @@
+//! Box: 67, empty=0\nPair(10, 3.500000)\nErro esperado ao dar push: OutOfBounds\nTopo da stack: 3\nTopo float: 2.500000\n
+include <stdio.h>
+include <stdlib.h>
+
+enum Error {
+    OutOfBounds,
+    Empty
+}
+
+// Container genérico simples, tipo Vec<T> minimalista
+struct Box<T> {
+    T value;
+    bool hasValue;
+
+    static Box<T> empty() {
+        Box<T> b;
+        b.hasValue = false;
+        return b;
+    }
+
+    static Box<T> of(T val) {
+        return (Box<T>) {val, true};
+    }
+
+    T unwrap() {
+        return self.value;
+    }
+
+    bool isEmpty() {
+        return !self.hasValue;
+    }
+}
+
+// Par genérico com dois tipos diferentes, testando 2 params ao mesmo tempo
+struct Pair<A, B> {
+    A first;
+    B second;
+
+    static Pair<A, B> make(A a, B b) {
+        return (Pair<A, B>) {a, b};
+    }
+
+    void print() {
+        printf("Pair(%d, %f)\n", self.first, self.second);
+    }
+}
+
+// Struct genérico cujo método interno usa outro método do mesmo struct (self-call dentro de generic)
+struct Stack<T> {
+    T* data;
+    u32 size;
+    u32 cap;
+
+    static Stack<T> new(u32 cap) {
+        T* data = malloc(sizeof(T) * cap);
+        return (Stack<T>) {data, 0, cap};
+    }
+
+    bool isFull() {
+        return self.size >= self.cap;
+    }
+
+    int!Error push(T val) {
+        if self.isFull() {
+            return Error.OutOfBounds;
+        }
+        self.data[self.size] = val;
+        self.size = self.size + 1;
+        return 0;
+    }
+
+    Box<T> pop() {
+        if self.size == 0 {
+            return Box<T>.empty();
+        }
+        self.size = self.size - 1;
+        return Box<T>.of(self.data[self.size]);
+    }
+
+    void delete() {
+        free(self.data);
+    }
+}
+
+int main() {
+    // Teste 1: Box<int> básico
+    Box<int> b1 = Box<int>.of(67);
+    printf("Box: %d, empty=%d\n", b1.unwrap(), b1.isEmpty());
+
+    // Teste 2: Pair<int, float>
+    Pair<int, float> p1 = Pair<int, float>.make(10, 3.5F);
+    p1.print();
+
+    // Teste 3: Stack<int> com push/pop, error union e defer juntos
+    Stack<int> stack = Stack<int>.new(3);
+    defer stack.delete();
+
+    int!Error r1 = stack.push(1);
+    int!Error r2 = stack.push(2);
+    int!Error r3 = stack.push(3);
+    int!Error r4 = stack.push(4); // deve falhar, stack cheia
+
+    if !r4.valid {
+        printf("Erro esperado ao dar push: OutOfBounds\n");
+    }
+
+    Box<int> top = stack.pop();
+    if !top.isEmpty() {
+        printf("Topo da stack: %d\n", top.unwrap());
+    }
+
+    // Teste 4: Stack<float>, provando que a mesma struct genérica
+    // gera instanciações independentes por tipo
+    Stack<float> fstack = Stack<float>.new(2);
+    defer fstack.delete();
+    fstack.push(1.5F);
+    fstack.push(2.5F);
+    Box<float> ftop = fstack.pop();
+    printf("Topo float: %f\n", ftop.unwrap());
+
+    return 0;
+}

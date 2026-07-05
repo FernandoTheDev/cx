@@ -1,0 +1,54 @@
+//! reverse of 'Fernando' = 'odnanreF'\n'arara' is a palindrome: 1\n'Fernando' is a palindrome: 0\nvowel count in 'The Cx Programming Language' = 8\n
+include <stdio.h>
+include <string.h>
+
+void reverseInto(char* src, char* dst) {
+    int len = strlen(src);
+    for (int i = 0; i < len; i++) {
+        int x = len - 1 - i; // TODO
+        dst[i] = src[x];
+    }
+    dst[len] = '\0';
+}
+
+bool isPalindrome(char* s) {
+    int len = strlen(s);
+    for (int i = 0; i < len / 2; i++) {
+        int x = len - 1 - i; // TODO
+        if s[i] != s[x] {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool isVowel(char c) {
+    return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'
+        || c == 'A' || c == 'E' || c == 'I' || c == 'O' || c == 'U';
+}
+
+int countVowels(char* s) {
+    int count = 0;
+    int len = s.length;
+    for (int i = 0; i < len; i++) {
+        if isVowel(s[i]) {
+            count = count + 1;
+        }
+    }
+    return count;
+}
+
+int main() {
+    char* name = "Fernando";
+    char[16] reversed;
+    reverseInto(name, reversed);
+    printf("reverse of '%s' = '%s'\n", name, reversed);
+
+    printf("'arara' is a palindrome: %d\n", isPalindrome("arara"));
+    printf("'Fernando' is a palindrome: %d\n", isPalindrome("Fernando"));
+
+    char* phrase = "The Cx Programming Language";
+    printf("vowel count in '%s' = %d\n", phrase, countVowels(phrase));
+
+    return 0;
+}

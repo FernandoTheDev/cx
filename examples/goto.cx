@@ -1,0 +1,15 @@
+//# 67
+include <stdio.h>
+
+int main() {
+    defer printf("Defer\n");
+    goto end;
+start:
+    return 67;
+middle:
+    goto start;
+    return 1;
+end:
+    goto middle;
+    return 0;
+}

@@ -1,0 +1,150 @@
+//! Mapper int: -20\nMapper float: 7.000000\nPipeline sucesso: 5\nPipeline erro esperado (passo 1): 0\nPipeline erro esperado (passo 2): 1\nSafeBox valido: 10\nSafeBox invalido propagado corretamente\n
+include <stdio.h>
+include <stdlib.h>
+
+enum Error {
+    DivByZero,
+    Negative,
+    Overflow
+}
+
+// alias só suporta um ID comum pro apelido
+// por enquanto ;)
+// alias Transform<T> = T(T)
+
+// Container genérico que aplica um callback sobre o valor
+struct Mapper<T> {
+    T value;
+
+    static Mapper<T> of(T val) {
+        return (Mapper<T>) {val};
+    }
+
+    // map recebe um callback T(T) e aplica sobre o valor interno
+    Mapper<T> map(T(T) fn) {
+        return (Mapper<T>) {fn(self.value)};
+    }
+
+    T get() {
+        return self.value;
+    }
+}
+
+// Funções livres para servir de callback
+int dobro(int x) {
+    return x * 2;
+}
+
+int negativo(int x) {
+    return -x;
+}
+
+float dobroF(float x) {
+    return x * 2.0F;
+}
+
+// ---- Error union encadeado ----
+
+int!Error dividir(int a, int b) {
+    if b == 0 {
+        return Error.DivByZero;
+    }
+    return a / b;
+}
+
+int!Error raizAproximada(int x) {
+    if x < 0 {
+        return Error.Negative;
+    }
+    // aproximação grosseira só pra ter mais um passo na cadeia
+    return x / 2;
+}
+
+// função que encadeia dois passos que podem falhar,
+// propagando o erro do primeiro que falhar
+int!Error pipeline(int a, int b) {
+    int!Error step1 = dividir(a, b);
+    if !step1.valid {
+        return step1.error;
+    }
+
+    int!Error step2 = raizAproximada(step1.ok);
+    if !step2.valid {
+        return step2.error;
+    }
+
+    return step2.ok;
+}
+
+// Generic + error union juntos: Mapper<T> aplicando um callback
+// que pode, em tese, ser usado em conjunto com resultado de pipeline
+struct SafeBox<T> {
+    T value;
+    bool valid;
+
+    static SafeBox<T> ok(T val) {
+        return (SafeBox<T>) {val, true};
+    }
+
+    static SafeBox<T> fail() {
+        SafeBox<T> b;
+        b.valid = false;
+        return b;
+    }
+
+    SafeBox<T> map(T(T) fn) {
+        if !self.valid {
+            return self;
+        }
+        return SafeBox<T>.ok(fn(self.value));
+    }
+}
+
+int main() {
+    // Teste 1: Mapper<int> com dois callbacks encadeados manualmente
+    Mapper<int> m = Mapper<int>.of(10);
+    Mapper<int> m2 = m.map(dobro);
+    Mapper<int> m3 = m2.map(negativo);
+    printf("Mapper int: %d\n", m3.get());
+
+    // Teste 2: Mapper<float> com callback próprio, provando instanciação separada
+    Mapper<float> mf = Mapper<float>.of(3.5F);
+    Mapper<float> mf2 = mf.map(dobroF);
+    printf("Mapper float: %f\n", mf2.get());
+
+    // Teste 3: pipeline de error union, caminho de sucesso
+    int!Error r1 = pipeline(20, 2);
+    if r1.valid {
+        printf("Pipeline sucesso: %d\n", r1.ok);
+    } else {
+        printf("Pipeline erro inesperado\n");
+    }
+
+    // Teste 4: pipeline de error union, falha no primeiro passo (div por zero)
+    int!Error r2 = pipeline(20, 0);
+    if !r2.valid {
+        printf("Pipeline erro esperado (passo 1): %d\n", r2.error);
+    }
+
+    // Teste 5: pipeline, falha no segundo passo (negativo depois da divisão)
+    int!Error r3 = pipeline(-20, 2);
+    if !r3.valid {
+        printf("Pipeline erro esperado (passo 2): %d\n", r3.error);
+    }
+
+    // Teste 6: SafeBox<int> generic + callback, caminho válido
+    SafeBox<int> sb = SafeBox<int>.ok(5);
+    SafeBox<int> sb2 = sb.map(dobro);
+    if sb2.valid {
+        printf("SafeBox valido: %d\n", sb2.value);
+    }
+
+    // Teste 7: SafeBox<int> generic + callback, caminho invalido (map nao deve executar)
+    SafeBox<int> sbFail = SafeBox<int>.fail();
+    SafeBox<int> sbFail2 = sbFail.map(dobro);
+    if !sbFail2.valid {
+        printf("SafeBox invalido propagado corretamente\n");
+    }
+
+    return 0;
+}

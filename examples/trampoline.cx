@@ -1,0 +1,58 @@
+//! Direct recursion result: 610\nTrampoline result: 610\nCompose(add1, double): 22\n
+include <stdio.h>
+
+// Fibonacci recursivo comum, só pra comparar com a versão trampoline
+int fibDirect(int n) {
+    if n <= 1 {
+        return n;
+    }
+    return fibDirect(n - 1) + fibDirect(n - 2);
+}
+
+// ---- Trampoline ----
+// Em vez de empilhar chamadas recursivas, cada "passo" retorna
+// os dados necessários pro proximo passo, e um loop externo
+// vai "saltando" (trampolinando) entre eles até terminar.
+
+struct Bounce {
+    bool done;
+    int a;
+    int b;
+    int n;
+}
+
+Bounce fibStep(int a, int b, int n) {
+    if n == 0 {
+        return (Bounce) {true, a, b, n};
+    }
+    return (Bounce) {false, b, a + b, n - 1};
+}
+
+int fibTrampoline(int n) {
+    Bounce state = (Bounce) {false, 0, 1, n};
+    while !state.done {
+        state = fibStep(state.a, state.b, state.n);
+    }
+    return state.a;
+}
+
+alias IntFn = int(int)
+
+int add1(int x) {
+    return x + 1;
+}
+
+int double_(int x) {
+    return x * 2;
+}
+
+int compose(IntFn f, IntFn g, int val) {
+    return g(f(val));
+}
+
+int main() {
+    printf("Direct recursion result: %d\n", fibDirect(15));
+    printf("Trampoline result: %d\n", fibTrampoline(15));
+    printf("Compose(add1, double): %d\n", compose(add1, double_, 10));
+    return 0;
+}

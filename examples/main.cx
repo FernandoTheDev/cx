@@ -1,0 +1,29 @@
+//! Fernando 18 67\n
+include <stdio.h>
+
+int sum(int x, int y) {
+    return x + y;
+}
+
+int main() {
+    char* name = "Fernando";
+    int val = 18;
+    
+    int x = sum(val * 18, 1);
+    int* y = &x;
+    *y = 67;
+
+    // Usuario u = Usuario{name};
+    // u.get()
+
+    printf("%s %d %d\n", name, val, x);
+    return 0;
+}
+
+// struct Usuario {
+//     char* nome;
+
+//     char* get(self) {
+//         return self.nome;
+//     }
+// }

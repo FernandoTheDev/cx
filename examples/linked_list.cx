@@ -1,0 +1,63 @@
+//! Dequeued: 10\nDequeued: 20\nCurrent front of queue: 30\n
+include <stdio.h>
+include <stdlib.h>
+
+struct Node {
+    int data;
+    Node* next;
+}
+
+struct Queue {
+    Node* front;
+    Node* back;
+
+    static Queue* create() {
+        Queue* q = calloc(1, sizeof(Queue));
+        return q;
+    }
+
+    static Node* createNode(int value) {
+        Node* n = malloc(sizeof(Node));
+        n.data = value;
+        n.next = null;
+        return n;
+    }
+
+    void enqueue(int value) {
+        Node* n = Queue.createNode(value);
+        if self.back == null {
+            self.front = n;
+            self.back = n;
+            return;
+        }
+        self.back.next = n;
+        self.back = n;
+    }
+
+    void dequeue() {
+        if self.front == null {
+            return;
+        }
+        Node* n = self.front;
+        self.front = self.front.next;
+        if self.front == null {
+            self.back = null;
+        }
+        printf("Dequeued: %d\n", n.data);
+        free(n);
+    }
+}
+
+int main() {
+    Queue* q = Queue.create();
+    defer free(q);
+
+    q.enqueue(10);
+    q.enqueue(20);
+    q.enqueue(30);
+    q.dequeue();
+    q.dequeue();
+
+    printf("Current front of queue: %d\n", q.front.data);
+    return 0;
+}

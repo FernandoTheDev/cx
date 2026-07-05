@@ -1,0 +1,24 @@
+//! defer 3\ndefer 2\ndefer 1\n
+include <stdio.h>
+
+int main() {
+    defer printf("defer 1\n");
+    defer printf("defer 2\n");
+    defer printf("defer 3\n");
+
+    int i = 0;
+    while true {
+        if i < 1 {
+            i++;
+            continue;
+        }
+        break;
+    }
+
+    for (int i = 0; i < 10; i++) {
+        if (i == 9)
+            break;
+    }
+    
+    return 0;
+}

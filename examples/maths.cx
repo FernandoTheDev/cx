@@ -1,0 +1,58 @@
+//! GCD(48, 18) = 6\nis_prime(17) = 1\nis_prime(18) = 0\npow(2, 10) = 1024\nfactorial(6) = 720\nsum of primes under 30 = 129\n
+include <stdio.h>
+
+int gcd(int a, int b) {
+    while b != 0 {
+        int t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
+}
+
+bool isPrime(int n) {
+    if n < 2 {
+        return false;
+    }
+    for (int i = 2; i * i <= n; i++) {
+        if n % i == 0 {
+            return false;
+        }
+    }
+    return true;
+}
+
+long power(int base, int exp) {
+    long result = 1;
+    for (int i = 0; i < exp; i++) {
+        result = result * base;
+    }
+    return result;
+}
+
+long factorial(int n) {
+    if n <= 1 {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+int sumOfPrimesUnder(int limit) {
+    int total = 0;
+    for (int i = 2; i < limit; i++) {
+        if isPrime(i) {
+            total = total + i;
+        }
+    }
+    return total;
+}
+
+int main() {
+    printf("GCD(48, 18) = %d\n", gcd(48, 18));
+    printf("is_prime(17) = %d\n", isPrime(17));
+    printf("is_prime(18) = %d\n", isPrime(18));
+    printf("pow(2, 10) = %lld\n", power(2, 10));
+    printf("factorial(6) = %lld\n", factorial(6));
+    printf("sum of primes under 30 = %d\n", sumOfPrimesUnder(30));
+    return 0;
+}

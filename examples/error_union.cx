@@ -1,0 +1,24 @@
+//! Resultado: 19\n
+include <stdio.h>
+
+enum Error {
+    Equals
+}
+
+int!Error sum(int x, int y) {
+    if x == y
+        return Error.Equals;
+    return x + y;
+}
+
+int main() {
+    int!Error result = sum(10, 9);
+
+    if !result.valid {
+        printf("Erro ao somar: %d\n", result.error);
+        return 1;
+    }
+
+    printf("Resultado: %d\n", result.ok);
+    return 0;
+}

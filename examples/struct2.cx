@@ -1,0 +1,14 @@
+//! 30\n
+include <stdio.h>
+
+struct Calculator {
+    static int sum(int x, int y) {
+        return x + y;
+    }
+}
+
+int main() {
+    // Calculator calc = Calculator.new(3);
+    printf("%d\n", Calculator.sum(10, 20));
+    return 0;
+}

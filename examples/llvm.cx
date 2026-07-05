@@ -1,0 +1,62 @@
+//# 0
+include <llvm-c/Core.h>
+include <llvm-c/Analysis.h>
+include <stdio.h>
+
+alias LLVMContextRef // alias com tipo opaco mas reconhecido
+alias LLVMModuleRef
+alias LLVMBuilderRef
+alias LLVMTypeRef
+alias LLVMValueRef
+alias LLVMBasicBlockRef
+
+struct LLVMWrapper {
+    LLVMContextRef context;
+    LLVMModuleRef module;
+    LLVMBuilderRef builder;
+
+    static LLVMWrapper new(char* moduleName) {
+        LLVMContextRef ctx = LLVMContextCreate();
+        LLVMModuleRef mod = LLVMModuleCreateWithNameInContext(moduleName, ctx);
+        LLVMBuilderRef b = LLVMCreateBuilderInContext(ctx);
+        return (LLVMWrapper) {ctx, mod, b};
+    }
+
+    void delete() {
+        LLVMDisposeBuilder(self.builder);
+        LLVMDisposeModule(self.module);
+        LLVMContextDispose(self.context);
+    }
+
+    void dump() {
+        LLVMDumpModule(self.module);
+    }
+}
+
+int main() {
+    LLVMWrapper w = LLVMWrapper.new("hello_module");
+    defer w.delete();
+
+    LLVMTypeRef charPtr = LLVMPointerType(LLVMInt8TypeInContext(w.context), 0);
+    LLVMTypeRef[] printfArgs = {charPtr};
+    LLVMTypeRef printfType = LLVMFunctionType(LLVMInt32TypeInContext(w.context), printfArgs, 1, 1);
+    LLVMValueRef printfFn = LLVMAddFunction(w.module, "printf", printfType);
+
+    LLVMTypeRef mainType = LLVMFunctionType(LLVMInt32TypeInContext(w.context), null, 0, 0);
+    LLVMValueRef mainFn = LLVMAddFunction(w.module, "main", mainType);
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(w.context, mainFn, "entry");
+    LLVMPositionBuilderAtEnd(w.builder, entry);
+
+    LLVMValueRef hello = LLVMBuildGlobalStringPtr(w.builder, "Hello, LLVM!\n", "hello_str");
+    LLVMValueRef[] args = {hello};
+    LLVMBuildCall2(w.builder, printfType, printfFn, args, 1, "call");
+
+    LLVMBuildRet(w.builder, LLVMConstInt(LLVMInt32TypeInContext(w.context), 0, 0));
+
+    char* error = null;
+    LLVMVerifyModule(w.module, LLVMAbortProcessAction, &error);
+
+    w.dump();
+
+    return 0;
+}

@@ -1,0 +1,118 @@
+//! Print: 67\n
+include <stdio.h>
+include <stdlib.h>
+
+enum ValueType {
+    Int,
+    Float,
+}
+
+union ValueRaw {
+    i32 i;
+    f32 f;
+}
+
+struct Value {
+    ValueType type;
+    ValueRaw raw;
+
+    static Value mkInt(i32 val)
+    {
+        ValueRaw r;
+        r.i = val;
+        return (Value) { 
+            ValueType.Int,
+            r
+        };
+    }
+
+    static Value mkFloat(f32 val)
+    {
+        ValueRaw r;
+        r.f = val;
+        return (Value) { 
+            ValueType.Float,
+            r
+        };
+    }
+}
+
+enum OpCode {
+    Push,
+    Add,
+    Print,
+    Hlt,
+}
+
+struct Instruction {
+    OpCode op;
+    Value l;
+    Value r;
+}
+
+struct VM {
+    Value* stack;
+    u32 stackSize;
+
+    Instruction* instructions;
+    u32 size;
+    u32 pc;
+
+    static VM new(Instruction* instrs, u32 size) {
+        return (VM) {
+            calloc(1, sizeof(Value) * 2),
+            0,
+            instrs,
+            size,
+            0
+        };
+    }
+
+    void run() {
+        while self.pc < self.size {
+            Instruction ins = self.instructions[self.pc++];
+            if ins.op == OpCode.Push {
+                self.stack[self.stackSize++] = ins.l;
+                continue;
+            }
+            if ins.op == OpCode.Add {
+                Value left = self.stack[ins.l.raw.i];
+                Value right = self.stack[ins.r.raw.i];
+                left.raw.i += right.raw.i;
+                self.stack[0] = left;
+                continue;
+            }
+            if ins.op == OpCode.Print {
+                printf("Print: %d\n", self.stack[0].raw.i);
+                continue;
+            }
+            if ins.op == OpCode.Hlt
+                return;
+        }
+    }
+}
+
+int main() {
+    Value v1 = Value.mkInt(60);
+    Value v2 = Value.mkInt(7);
+
+    Value v3 = Value.mkInt(0);
+    Value v4 = Value.mkInt(1);
+
+    Instruction* instrs = calloc(1, sizeof(Instruction) * 10);
+    defer free(instrs);
+
+    u64 idx = 0;
+    instrs[idx++] = (Instruction) {OpCode.Push, v1};
+    instrs[idx++] = (Instruction) {OpCode.Push, v2};
+    instrs[idx++] = (Instruction) {OpCode.Add, v3, v4}; // soma o 0 e 1 da stack (bem ruim eu sei ;)
+    instrs[idx++] = (Instruction) {OpCode.Print};
+    instrs[idx++] = (Instruction) {OpCode.Hlt};
+
+    VM vm = VM.new(instrs, idx);
+    defer free(vm.stack);
+
+    vm.run();
+
+    return 0;
+}

@@ -1,0 +1,19 @@
+//! Red\n
+include <stdio.h>
+
+enum Colors {
+    Red,
+    Green,
+}
+
+int main() {
+    Colors color = Colors.Red;
+    
+    if color == Colors.Green {
+        printf("Green\n");
+    } else {
+        printf("Red\n");
+    }
+
+    return 0;
+}

@@ -1,0 +1,11 @@
+//# 67
+include <stdlib.h>
+
+int main() {
+    int* arr = (int*) malloc(4);
+    arr[0] = 60;
+    arr[1] = 7;
+    int res = arr[0] + arr[1];
+    free(arr);
+    return res;
+}

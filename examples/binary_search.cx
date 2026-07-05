@@ -1,0 +1,40 @@
+//! Element found at index: 3\n
+include <stdio.h>
+
+// Function that returns the element's index or -1 if not found
+int binarySearch(int[] arr, int size, int target) {
+    int left = 0; 
+    int right = size - 1; 
+
+    while left <= right {
+        int mid = left + (right - left) / 2; // Prevents overflow
+        
+        // Check if the target is at the middle
+        if arr[mid] == target {
+            return mid; 
+        }
+        // If the target is greater, ignore the left half
+        if arr[mid] < target {
+            left = mid + 1; 
+        }
+        // If the target is smaller, ignore the right half
+        else {
+            right = mid - 1; 
+        }
+    }
+    return -1; // Element not found
+}
+
+int main() {
+    int[] data = {11, 12, 22, 25, 34, 64, 90}; // Array must be sorted
+    int n = sizeof(data) / sizeof(data[0]); 
+    int target = 25; 
+
+    int result = binarySearch(data, n, target); 
+    if result != -1 {
+        printf("Element found at index: %d\n", result); 
+    } else {
+        printf("Element not found in the array.\n"); 
+    }
+    return 0;
+}

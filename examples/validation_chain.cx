@@ -1,0 +1,58 @@
+//! Valid age: 25\nInvalid age -5: error code 0\nInvalid age 200: error code 1\nAverage of valid ages: 33\n
+include <stdio.h>
+
+enum ValidationError {
+    TooLow,
+    TooHigh
+}
+
+int!ValidationError validateAge(int age) {
+    if age < 0 {
+        return ValidationError.TooLow;
+    }
+    if age > 150 {
+        return ValidationError.TooHigh;
+    }
+    return age;
+}
+
+// encadeia validação com um segundo passo (dobra e depois desfaz,
+// só pra forçar duas etapas encadeadas de error union)
+int!ValidationError processAge(int rawAge) {
+    int!ValidationError validated = validateAge(rawAge);
+    if !validated.valid {
+        return validated.error;
+    }
+
+    int doubled = validated.ok * 2;
+    int!ValidationError second = validateAge(doubled / 2);
+    if !second.valid {
+        return second.error;
+    }
+
+    return second.ok;
+}
+
+int main() {
+    int!ValidationError r1 = processAge(25);
+    if r1.valid {
+        printf("Valid age: %d\n", r1.ok);
+    }
+
+    int!ValidationError r2 = processAge(-5);
+    if !r2.valid {
+        printf("Invalid age -5: error code %d\n", r2.error);
+    }
+
+    int!ValidationError r3 = processAge(200);
+    if !r3.valid {
+        printf("Invalid age 200: error code %d\n", r3.error);
+    }
+
+    // media apenas das idades validas coletadas manualmente
+    int sum = 25 + 30 + 44;
+    int avg = sum / 3;
+    printf("Average of valid ages: %d\n", avg);
+
+    return 0;
+}

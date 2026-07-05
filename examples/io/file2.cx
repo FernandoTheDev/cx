@@ -1,0 +1,57 @@
+//! Wrote 3 lines.\nLine 1: 10\nLine 2: 20\nLine 3: 30\nSum from file: 60\n
+include <stdio.h>
+include <stdlib.h>
+
+struct FileLines {
+    int[3] values;
+    u32 count;
+}
+
+void writeNumbers(char* filename) {
+    FILE* f = fopen(filename, "wb");
+    defer fclose(f);
+    fprintf(f, "10\n20\n30\n");
+    printf("Wrote 3 lines.\n");
+}
+
+FileLines readNumbers(char* filename) {
+    FILE* f = fopen(filename, "r");
+    
+    FileLines lines;
+    lines.count = 0;
+
+    if f == null {
+        printf("fopen failed!\n");
+        return lines;
+    }
+    defer fclose(f);
+    
+
+    int val;
+    while fscanf(f, "%d", &val) == 1 {
+        u32 count = lines.count;
+        lines.values[count] = val;
+        lines.count = lines.count + 1;
+    }
+
+    return lines;
+    printf("dead code");
+}
+
+int main() {
+    char* filename = "./examples/io/cx_io_test.txt";
+
+    writeNumbers(filename);
+    FileLines lines = readNumbers(filename);
+
+    int sum = 0;
+    for (u32 i = 0; i < lines.count; i++) {
+        printf("Line %d: %d\n", i + 1, lines.values[i]);
+        sum = sum + lines.values[i];
+    }
+
+    printf("Sum from file: %d\n", sum);
+    remove(filename);
+
+    return 0;
+}

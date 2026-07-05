@@ -1,0 +1,29 @@
+//! 0\n1\n2\nval: 450\n
+include <stdio.h>
+
+int main() {
+    int val = 0;
+    
+    for (int i = 0; i < 10; i++) {
+        val += i;
+    }
+    
+    for (;val < 100; val *= 10) {}
+    
+    for (;;) {
+        if val < 100 {
+            val += 100;
+            continue;
+        }
+        break;
+    }
+
+    for (int i = 0; i < 3;) {
+        printf("%d\n", i);
+        i++;
+    }
+
+    printf("val: %d\n", val);
+
+    return 0;
+}

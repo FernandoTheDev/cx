@@ -1,0 +1,9 @@
+//# 55
+int main() {
+    int i = 0;
+    int val = 0;
+    while i++ < 10 {
+        val += i;
+    }
+    return val; // 55
+}

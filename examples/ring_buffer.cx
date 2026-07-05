@@ -1,0 +1,52 @@
+//! push 1 2 3 4 5\nafter overflow (cap=3): 3 4 5\nsum: 12\n
+include <stdio.h>
+
+// Ring buffer genérico de tamanho fixo (sem malloc, só array embutido)
+// pra testar generic misturado com array de tamanho fixo dentro de struct.
+struct RingBuffer<T> {
+    T[3] data;
+    u32 head;
+    u32 count;
+
+    static RingBuffer<T> new() {
+        RingBuffer<T> r;
+        r.head = 0;
+        r.count = 0;
+        return r;
+    }
+
+    void push(T val) {
+        u32 idx = (self.head + self.count) % 3;
+        if self.count < 3 {
+            self.data[idx] = val;
+            self.count = self.count + 1;
+        } else {
+            // sobrescreve o mais antigo (comportamento circular)
+            self.data[self.head] = val;
+            self.head = (self.head + 1) % 3;
+        }
+    }
+
+    T get(u32 idx) {
+        u32 real = (self.head + idx) % 3;
+        return self.data[real];
+    }
+}
+
+int main() {
+    RingBuffer<int> rb = RingBuffer<int>.new();
+
+    printf("push 1 2 3 4 5\n");
+    rb.push(1);
+    rb.push(2);
+    rb.push(3);
+    rb.push(4); // estoura capacidade (3), sobrescreve o mais antigo
+    rb.push(5);
+
+    printf("after overflow (cap=3): %d %d %d\n", rb.get(0), rb.get(1), rb.get(2));
+
+    int sum = rb.get(0) + rb.get(1) + rb.get(2);
+    printf("sum: %d\n", sum);
+
+    return 0;
+}
