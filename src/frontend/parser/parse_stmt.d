@@ -119,16 +119,13 @@ public:
             return dir;
         }
         string d = resolveDir(dir);
-        if (d.length == 0) 
+        if (d.length == 0)
             p.err.error(dir.pos, "The import directory cannot be null.");
-
-        if (extension(d) == "")
-            d ~= ".cx";
         
-        if (extension(d) != ".cx")
+        if (extension(d) != ".cx" && extension(d) != "")
             p.err.error(dir.pos, "The imported file is not a valid '.cx' file.");
 
-        return new ImportStmt(d, pos);
+        return new ImportStmt(d, p.getPos(pos, dir.pos));
     }
 
     string resolveDir(Node node)

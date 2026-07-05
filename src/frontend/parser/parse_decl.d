@@ -178,16 +178,16 @@ public:
 
     Node parseAliasDecl(Position pos)
     {
-        string name = p.consume(TokenKind.Id, "Espected an 'ID'.").s;
+        string name = p.consume(TokenKind.Id, "Expected an 'ID'.").s;
         if (!p.check(TokenKind.Equals))
         {
             p.types.update(name, new TypeExprNamed(name, pos));
-            return new AliasDecl(pos);    
+            return new AliasDecl(name, pos);    
         }
         p.consume(TokenKind.Equals, "Expected '='.");
         TypeExpr type = p.parseType.parse();
         p.types.update(name, type);
-        return new AliasDecl(pos);
+        return new AliasDecl(name, pos);
     }
 
     Node parse()

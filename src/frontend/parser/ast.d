@@ -1307,9 +1307,11 @@ class UnionDecl : Node
 
 class AliasDecl : Node
 {
-    this(Position pos)
+    string name;
+    this(string name, Position pos)
     {
         super(NodeKind.AliasDecl, pos);
+        this.name = name;
     }
 
     override void print(uint indent)
@@ -1319,7 +1321,7 @@ class AliasDecl : Node
 
     override AliasDecl dup()
     {
-        auto n = new AliasDecl(pos);
+        auto n = new AliasDecl(name, pos);
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;
