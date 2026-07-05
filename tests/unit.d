@@ -69,7 +69,10 @@ TestResult runTest(string filename)
     string binFile = filename ~ ".bin";
 
     // 1) Cx -> C
-    Exec cxComp = executeShell(format("./cx %s > %s", filename, cFile));
+    string llvm;
+    if (filename.length > 13 && filename[9..13] == "llvm")
+        llvm = "-L LLVM-22";
+    Exec cxComp = executeShell(format("./cx %s --output %s %s", filename, binFile, llvm));
     if (cxComp.status != 0)
     {
         res.ok  = false;
@@ -78,21 +81,7 @@ TestResult runTest(string filename)
         return res;
     }
 
-    // 2) C -> binário (C99 puro, mesmo alvo de portabilidade do projeto)
-    string llvm;
-    if (filename.length > 13 && filename[9..13] == "llvm")
-        llvm = "-lLLVM-22";
-    Exec cComp = executeShell(format("cc %s -std=c99 %s -o %s", llvm, cFile, binFile));
-    if (cComp.status != 0)
-    {
-        res.ok  = false;
-        res.err = "Falha ao compilar o C gerado:\n" ~ cComp.output ~ "\n\n--- C gerado ---\n" ~ readTextSafe(cFile);
-        remove_if_exists(cFile);
-        remove_if_exists(binFile);
-        return res;
-    }
-
-    // 3) roda o binário
+    // 2) roda o binário
     Exec run = executeShell(format("./%s", binFile));
     int code = run.status;
     string output = run.output;
@@ -118,9 +107,7 @@ TestResult runTest(string filename)
         }
     }
 
-    remove_if_exists(cFile);
     remove_if_exists(binFile);
-
     return res;
 }
 
