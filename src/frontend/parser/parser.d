@@ -20,6 +20,7 @@ public:
     Diagnostics err;
     ubyte flags;
     ImportResolverContext* ctx;
+    Node[] imports;
 
     ParseType parseType;
     ParseExpr parseExpr;
@@ -195,6 +196,6 @@ public:
         Node[] body;
         while (!isAtEnd())
             body ~= parseIntern();
-        return new Program(body);
+        return new Program(imports ~ body);
     }
 }

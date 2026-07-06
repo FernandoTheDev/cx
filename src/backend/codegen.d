@@ -14,6 +14,9 @@ private:
     TypeRegistry types;
     TypeExpr actualType;
     TypeExpr fnType;
+    bool genHeaderFile;
+    string headerFile;
+
     bool[string] errorUnions;
     bool fnErrorUnion; // diz se a função atual retorna uma errorUnion
     string fnUnion; // a estrutura da função
@@ -24,35 +27,7 @@ private:
 
     string[] defer;
     string[] header = [];
-    string[] cxHeader = [
-        "#ifndef __CLANG_STDINT_H",
-        "   #include <stdint.h>",
-        "#endif",
-        "",
-        "#ifndef _STRING_H",
-        "   #include <string.h>",
-        "#endif",
-        "",
-        "#ifndef __STDDEF_H",
-        "   #include <stddef.h>",
-        "#endif",
-        "",
-        "#ifndef NULL",
-        "   #define NULL (void*)0",
-        "#endif",
-        "",
-        "#ifndef __STDBOOL_H",
-        "   #define true  1",
-        "   #define false 0",
-        "   #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L",
-        "        // ignore",
-        "   #else",
-        "        #ifndef bool",
-        "           typedef int bool;",
-        "        #endif",
-        "    #endif",
-        "#endif",
-    ];
+    string[] cxHeader = [];
     string[] typedefs;
     string[] data;
     string[] protos;
@@ -73,24 +48,55 @@ private:
         source ~= indent(code, ind);
     }
 
-    string compileProgram()
+    string[2] compileProgram()
     {
         foreach (ref node; program.body)
             compile(node, 0);
 
-        string code = header.join("\n");
-        code ~= "\n\n/* CX Header */\n";
-        code ~= cxHeader.join("\n");
-        code ~= "\n\n/* Typedefs */\n";
-        code ~= typedefs.join("\n");
-        code ~= "\n\n/* Data */\n";
-        code ~= data.join("\n");
-        code ~= "\n\n/* Prototipos */\n";
-        code ~= protos.join("\n");
-        code ~= "\n\n/* Code */\n";
-        code ~= source.join("\n");
+        string code, userCode;
+        if (genHeaderFile)
+        {
+            import std.string : toUpper;
+            string name = toUpper(headerFile[0..$-2]);
+            code ~= format("#ifndef %s_CX_H\n", name);
+            code ~= format("#define %s_CX_H\n\n", name);
+        }
+        code ~= header.join("\n");
+        if (cxHeader.length > 0)
+        {
+            code ~= "\n\n/* CX Header */\n";
+            code ~= cxHeader.join("\n");
+        }
+        if (typedefs.length > 0)
+        {
+            code ~= "\n\n/* Typedefs */\n";
+            code ~= typedefs.join("\n");
+        }
+        if (data.length > 0)
+        {
+            code ~= "\n\n/* Data */\n";
+            code ~= data.join("\n");
+        }
+        if (protos.length > 0)
+        {
+            code ~= "\n\n/* Prototypes */\n";
+            code ~= protos.join("\n");
+        }
+        if (genHeaderFile)
+            code ~= "\n\n#endif\n";
 
-        return code;
+        if (genHeaderFile)
+            userCode ~= format("#include \"%s\"", headerFile);
+        else
+        {
+            userCode ~= code;
+            code = [];
+        }
+
+        userCode ~= "\n\n/* Code */\n";
+        userCode ~= source.join("\n");
+
+        return [userCode, code];
     }
 
     void compile(Node node, uint ind)
@@ -667,14 +673,46 @@ private:
     }
 
 public:
-    this(Program program, TypeRegistry types, bool[string] staticFunctions)
+    this(Program program, TypeRegistry types, bool[string] staticFunctions, bool noHeader, bool genHeaderFile, 
+        string headerFile)
     {
         this.program = program;
         this.types = types;
         this.fnStatics = staticFunctions;
+        this.genHeaderFile = genHeaderFile;
+        this.headerFile = headerFile;
+        if (noHeader) return;
+        cxHeader ~= `
+#ifndef __CLANG_STDINT_H
+  #include <stdint.h>
+#endif
+
+#ifndef _STRING_H
+   #include <string.h>
+#endif
+
+#ifndef __STDDEF_H
+   #include <stddef.h>
+#endif
+
+#ifndef NULL
+   #define NULL (void*)0
+#endif
+
+#ifndef __STDBOOL_H
+   #define true  1
+   #define false 0
+   #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+        // ignore
+   #else
+        #ifndef bool
+           typedef int bool;
+        #endif
+    #endif
+#endif`;
     }
 
-    string compile()
+    string[2] compile()
     {
         return compileProgram();
     }

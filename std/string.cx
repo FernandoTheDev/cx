@@ -1,0 +1,43 @@
+import std.lib;
+include <string.h>
+
+struct String
+{
+    char* ptr;
+    size_t length;
+    bool owner;
+
+    static String from(char* str)
+    {
+        return (String) {str, str.length, false};
+    }
+
+    static String new(size_t cap)
+    {
+        return (String) {malloc(cap), cap, true};
+    }
+
+    char* data()
+    {
+        return self.ptr;
+    }
+
+    char* concat(char* other)
+    {
+        size_t len = other.length;
+        size_t newLen = self.length + len + 1;
+        char* ptr = malloc(newLen);
+        memcpy(ptr, self.ptr, self.length);
+        memcpy(ptr + self.length, other, len);
+        size_t l = newLen-1;
+        ptr[l] = '\0';
+        self.ptr = ptr;
+        self.owner = true;
+        return self.ptr;
+    }
+
+    void free()
+    {
+        if self.owner free(self.ptr);
+    }
+}

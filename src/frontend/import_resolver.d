@@ -24,6 +24,7 @@ private:
     Diagnostics err;
     TypeRegistry registry;
     ImportResolverContext* context;
+    ImportResolverContext* local;
     Generic generic;
     Program program;
 
@@ -48,8 +49,8 @@ public:
     {
         if (string* m = file in context.mods)
         {
-            if (*m == mod)
-                err.error(im.pos, format("The module '%s' was imported twice by the same file '%s'.", file_, mod));
+            // if (*m == mod)
+            //     err.error(im.pos, format("The module '%s' was imported twice by the same file '%s'.", file_, mod));
             return (Node[]).init;
         }
 
@@ -103,7 +104,7 @@ public:
                 filecx = ext(file_);
                 if (!exists(file_) && !exists(filecx))
                 {
-                    err.error(im.pos, "Non-existent module.");
+                    err.error(im.pos, format("Non-existent module '%s'.", filecx));
                     continue;
                 }
             }

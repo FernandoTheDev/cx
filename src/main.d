@@ -40,6 +40,8 @@ void showHelp()
 	writeln("  -d, --debug           Print debug information, such as the C compiler in use");
 	writeln("  -h, --help            Show this help message and exit");
 	writeln("  -v, --version         Show the compiler version and exit");
+	writeln("      --no-header       It will not automatically generate the Cx header.");
+	writeln("      --gen-header      It will generate a .h file and a .c file without compiling at the end.");
 	writeln();
 	writeln("Environment:");
 	writeln("  CC                    C compiler used to build the output (default: cc)");
@@ -95,7 +97,7 @@ int main(string[] argv)
 		}
 	}
 
-	bool emitc, opt, dbg, verMessage, helpMessage;
+	bool emitc, opt, dbg, verMessage, helpMessage, noHeader, genHeader;
 	string[] link;
 	string output, target;
 
@@ -109,6 +111,8 @@ int main(string[] argv)
 			"link|L", &link,
 			"output|o", &output,
 			"target", &target,
+			"no-header", &noHeader,
+			"gen-header", &genHeader,
 		);
 	catch (GetOptException e)
 	{
@@ -161,10 +165,16 @@ int main(string[] argv)
 	ImportResolverContext* ctx = new ImportResolverContext(stdDir);
 	generic = new Generic(registry);
 	Parser p = new Parser(tokens, err, registry, generic, ctx);
-	Program program = p.parse();
-	check_diagnostic(err);
+	Program program;
+	
+	try
+		program = p.parse();
+	catch (Exception e)
+	{
+		writefln("An internal error occurred in the parser: %s", e.message);
+		return 1;
+	}
 
-	new ImportResolver(ctx, program, err, registry, generic).resolve();
 	check_diagnostic(err);
 
 	// faz duas passagens pra resolução completa
@@ -175,9 +185,17 @@ int main(string[] argv)
 	program.body = ResolveSymbols.resolve(err, ctx, program.body);
 	check_diagnostic(err);
 
-	string src = new CodeGen(program, registry, ctx.statics).compile();
+	string fileh = output ~ ".h";
 	string filec = output ~ ".c";
-	write(filec, src);
+	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh).compile();
+	write(filec, src[0]);
+
+	if (genHeader)
+	{
+		write(fileh, src[1]);
+		writefln("Success: two individual files, '%s' and '%s', were generated.", filec, fileh);
+		return 0;
+	}
 
 	if (emitc)
 	{
@@ -191,13 +209,14 @@ int main(string[] argv)
 	if (dbg)
 		writeln("C Compiler: ", c_compiler);
 
-	int code_cc = executeShell(command).status;
-	if (code_cc != 0)
+	auto exec = executeShell(command);
+	if (exec.status != 0)
 	{
 		writeln("An error occurred while compiling the program.");
-		writeln("Command: ", command);
-		writeln("Compiler code: ", code_cc);
-		return 1;
+		if (dbg)
+			writeln("Command: ", command);
+		writeln(exec.output);
+		return exec.status;
 	}
 
 	executeShell(format("rm -f %s", filec));

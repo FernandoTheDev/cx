@@ -1,3 +1,4 @@
+//! Hello from Cx ;)\n
 include <stdio.h>
 
 int main() {

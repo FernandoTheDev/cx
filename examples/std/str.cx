@@ -1,0 +1,13 @@
+//! Hello Fernando Dev\n
+import std.string;
+import std.io;
+
+int main() {
+    String s = String.from("Fernando");
+    defer s.free();
+    
+    s.concat(" Dev");
+    printf("Hello %s\n", s.data());
+    
+    return 0;
+}

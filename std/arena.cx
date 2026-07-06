@@ -1,11 +1,13 @@
 import std.lib;
 
-struct Arena {
+struct Arena 
+{
     char* data;
     u32 size;
     u32 cap;
 
-    static Arena new(u32 cap) {
+    static Arena new(u32 cap) 
+    {
         char* data = calloc(1, cap);
         return (Arena) {data, 0, cap};
     }
@@ -30,7 +32,8 @@ struct Arena {
         return (void*) data;
     }
 
-    void free() {
+    void free() 
+    {
         free(self.data);
     }
 }

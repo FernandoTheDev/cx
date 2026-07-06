@@ -125,7 +125,11 @@ public:
         if (extension(d) != ".cx" && extension(d) != "")
             p.err.error(dir.pos, "The imported file is not a valid '.cx' file.");
 
-        return new ImportStmt(d, p.getPos(pos, dir.pos));
+        ImportStmt stmt = new ImportStmt(d, p.getPos(pos, dir.pos));
+        Program prog = new Program([stmt]);
+        new ImportResolver(p.ctx, prog, p.err, p.types, p.generic).resolve();
+        p.imports ~= prog.body;
+        return stmt;
     }
 
     string resolveDir(Node node)

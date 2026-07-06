@@ -48,6 +48,9 @@ public:
 
         case TokenKind.Id:
             TypeExpr* t = p.types.get(tk.s);
+            // writeln(tk.pos.toString());
+            // writeln("T: ", t);
+            // writeln("S: ", tk.s, "\n");
             if (t && (
                     p.peek().kind == TokenKind.Id
                     || p.peek().kind == TokenKind.Star
