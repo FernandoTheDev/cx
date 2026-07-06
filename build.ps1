@@ -135,10 +135,23 @@ function Show-PathInstructions {
 }
 
 # ---------- main ----------
-if (-not (Check-Deps)) { exit 1 }
-Do-Build
-Install-Bin
-Update-Std
+if (-not (Check-Deps)) {
+    Write-Host ""
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+try {
+    Do-Build
+    Install-Bin
+    Update-Std
+    Write-Host ""
+    Ok "All done! '$BinName' installed at $InstallDir and std/ at $CxStdDest"
+    Show-PathInstructions
+} catch {
+    Write-Host ""
+    Err "Build process failed: $($_.Exception.Message)"
+}
+
 Write-Host ""
-Ok "All done! '$BinName' installed at $InstallDir and std/ at $CxStdDest"
-Show-PathInstructions
+Read-Host "Press Enter to exit"

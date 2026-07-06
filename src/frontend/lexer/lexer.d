@@ -158,13 +158,29 @@ private:
     pragma(inline, true)
     bool checkNewLine(char ch)
     {
-        if (ch == '\n')
+        version (Windows)
         {
-            loffset = 0;
-            line++;
-            return true;
+            if (ch == '\r' && !isAtEnd())
+            {
+                if (check('\n'))
+                {
+                    // o \r ja chegou com um advance()
+                    advance(); // pula \n
+                    loffset = 0;
+                    line++;
+                    return true;        
+                }
+            }
+            return false;
+        } else {
+            if (ch == '\n')
+            {
+                loffset = 0;
+                line++;
+                return true;
+            }
+            return false;
         }
-        return false;
     }
 
     pragma(inline, true)
@@ -300,10 +316,10 @@ public:
         {
             char ch = advance();
 
-            if (ch == ' ' || ch == '\r' || ch == '\t')
+            if (checkNewLine(ch))
                 continue;
 
-            if (checkNewLine(ch))
+            if (ch == ' ' || ch == '\r' || ch == '\t')
                 continue;
 
             if (isAlpha(ch))
