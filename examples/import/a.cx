@@ -1,5 +1,6 @@
 //# 0
 import other.b; // import "other/b"; OR import "other/b.cx";  
+// import other.b; // import "other/b"; OR import "other/b.cx";  
 include <stdio.h>
 
 void helloFromA() {

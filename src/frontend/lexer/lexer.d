@@ -28,6 +28,8 @@ private:
     TokenKind[string] keywords = [
         "return": TokenKind.Return,
         "static": TokenKind.Static,
+        "inline": TokenKind.Inline,
+        "overload": TokenKind.Overload,
         "struct": TokenKind.Struct,
         "alias": TokenKind.Alias,
         "enum": TokenKind.Enum,

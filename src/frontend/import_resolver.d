@@ -1,6 +1,7 @@
 module frontend.import_resolver;
 
 import frontend;
+import utils;
 
 import main : check_diagnostic;
 import std.format;
@@ -49,13 +50,14 @@ public:
     {
         if (string* m = file in context.mods)
         {
-            // if (*m == mod)
-            //     err.error(im.pos, format("The module '%s' was imported twice by the same file '%s'.", file_, mod));
+            // writeln(file);
+            // writeln(context.mods);
+            if (*m == mod)
+                err.error(im.pos, format("The module '%s' was imported twice by the same file '%s'.", file_, mod));
             return (Node[]).init;
         }
 
         context.mods[file] = mod;
-
         string content = readText(file_);
         Lexer l = new Lexer(file, path, content, err, registry);
         Token[] tokens = l.tokenizer();
@@ -64,14 +66,7 @@ public:
         Parser p = new Parser(tokens, err, registry, generic, context);
         Program prog = p.parse();
         check_diagnostic(err);
-
-        new ImportResolver(context, prog, err, registry, generic).resolve();
         return prog.body;
-    }
-
-    string ext(string file)
-    {
-        return (file[$ - 3 .. $] != ".cx") ? file ~ ".cx" : file;
     }
 
     void resolve()
@@ -88,7 +83,7 @@ public:
 
         string path = imports[0].pos.dir;
         string filename = imports[0].pos.filename;
-        mod = filename; // monta o modulo atual com base na posição
+        mod = ext(filename); // monta o modulo atual com base na posição
 
         foreach (ImportStmt im; imports)
         {

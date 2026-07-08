@@ -1,6 +1,7 @@
 module errors;
 
 import frontend.lexer;
+import utils;
 
 import core.stdc.stdlib : exit;
 import std.algorithm;
@@ -52,6 +53,7 @@ struct Diagnostic
 
 private void renderDiagnostic(ref Diagnostic d)
 {
+    d.position.filename = ext(d.position.filename);
     writefln("%s: %s", label(d.severity), d.message);
     writefln(" --> %s", d.position);
 

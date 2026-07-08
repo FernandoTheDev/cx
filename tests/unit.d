@@ -72,7 +72,7 @@ TestResult runTest(string filename)
     string llvm;
     if (filename.length > 13 && filename[9..13] == "llvm")
         llvm = "-L LLVM-22";
-    Exec cxComp = executeShell(format("./cx %s --output %s %s", filename, binFile, llvm));
+    Exec cxComp = executeShell(format("cx %s --output %s %s", filename, binFile, llvm));
     if (cxComp.status != 0)
     {
         res.ok  = false;

@@ -66,8 +66,13 @@ int main(string[] argv)
 	string OS;
 
 	version (Windows)
-	    OS = "windows";
-	else version (OSX)
+	{
+		writeln(
+			"The compiler does not yet support Windows, even though there is a build script and you managed to compile it.");
+		return 1;
+	}
+	
+	version (OSX)
 	    OS = "macos";
 	else version (linux)
 	    OS = "linux";
@@ -187,7 +192,8 @@ int main(string[] argv)
 
 	string fileh = output ~ ".h";
 	string filec = output ~ ".c";
-	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh).compile();
+	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh, ctx).compile();
+	check_diagnostic(err);
 	write(filec, src[0]);
 
 	if (genHeader)

@@ -1,0 +1,13 @@
+//# 60
+int sum(int x, int y) overload => x + y
+
+float sum(double x, double y) overload {
+    return x + y;
+}
+
+int main() {
+    int x = sum(10, 20);
+    double y = sum(10.0, 20.0);
+
+    return (int)x+y;
+}

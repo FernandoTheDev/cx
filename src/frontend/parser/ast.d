@@ -940,14 +940,16 @@ class StructDecl : Node
     string[] genericT;
     VarDecl[] fields;
     FnDecl[] functions;
+    bool fromGeneric;
 
-    this(string name, VarDecl[] fields, FnDecl[] functions, string[] genericT, Position pos)
+    this(string name, VarDecl[] fields, FnDecl[] functions, string[] genericT, Position pos, bool fromGeneric = false)
     {
         super(NodeKind.StructDecl, pos);
         this.name = name;
         this.fields = fields;
         this.functions = functions;
         this.genericT = genericT;
+        this.fromGeneric = fromGeneric;
     }
 
     override void print(uint indent)
@@ -967,7 +969,9 @@ class StructDecl : Node
         foreach (fn; functions)
             functionsCopy ~= (fn is null ? null : fn.dup());
 
-        auto n = new StructDecl(name, fieldsCopy, functionsCopy, (string[]).init, pos);
+        auto n = new StructDecl(name, fieldsCopy, functionsCopy, (string[]).init, pos, fromGeneric);
+        if (!fromGeneric)
+            n.fromGeneric = genericT.length > 0;
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;
@@ -1459,4 +1463,5 @@ enum NodeFlags : ubyte
 {
     Inline = 0b00000001,
     Static = 0b00000010,
+    Overload = 0b00000100,
 }
