@@ -25,3 +25,8 @@ void cx_enforce(bool cond, string message)
         return;
     cx_erro(message);
 }
+
+string ext(string file)
+{
+    return (file[$ - 3 .. $] != ".cx") ? file ~ ".cx" : file;
+}

@@ -14,12 +14,18 @@ class ResolveSymbols
         {
             string name; 
             if (node.kind == NodeKind.FnDecl)
+            {
                 name = (cast(FnDecl)node).name;
+                // writeln("Sym: ", name);
+            }
             else if (node.kind == NodeKind.StructDecl)
             {
                 StructDecl s = cast(StructDecl)node;
                 if (s.genericT.length == 0)
+                {
                     name = s.name;
+                    resolve(err, context, cast(Node[]) s.functions);
+                }
             }
             else if (node.kind == NodeKind.EnumDecl)
                 name = (cast(EnumDecl)node).name;

@@ -38,6 +38,8 @@ public:
         TypeExpr t = new TypeExprPointer(base, base.pos is null ? pos : p.getPos(base.pos, pos));
         if (p.match(TokenKind.Star))
             return parsePointerType(t, pos);
+        if (p.match(TokenKind.LBracket))
+            return parseArrayType(t, pos);
         return t;
     }
 

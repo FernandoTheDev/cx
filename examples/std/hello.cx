@@ -1,5 +1,4 @@
 //! Hello from Cx ;) \n
-// import std.io;
 import std; // importa todos os módulos (sem subdiretórios) da stdlib
 
 int main() {

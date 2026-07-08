@@ -1,0 +1,33 @@
+//# 1
+import std.arena;
+import std.lib;
+import std.io;
+
+void check(bool cond, char* message) {
+    if cond return;
+    printf("Error: %s\n", message);
+    exit(1);
+}
+
+int main(int argc, char*[] argv) {
+    check(argc == 2, "Expected 1 argument.");
+    
+    Arena arena = Arena.new(64);
+    defer arena.free();
+    
+    char* filename = argv[1];
+    check(filename.length > 5, "Invalid filename");
+    FILE* file = fopen(filename, "rb");
+
+    fseek(file, 0, SEEK_END);
+    size_t size = (size_t) ftell(file);
+    rewind(file);
+    
+    char* source = arena.alloc(size);
+    fread(source, 1, size-1, file);
+    fclose(file);
+
+    printf("'%s'\n", source);
+
+    return 0;
+}

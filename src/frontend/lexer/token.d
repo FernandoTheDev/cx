@@ -8,6 +8,8 @@ enum TokenKind : ubyte
     Include,
 
     // keywords
+    Inline,
+    Overload,
     Import,
     Goto,
     Alias,

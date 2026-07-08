@@ -1,0 +1,29 @@
+//! Hello 67\nHello 67.000000\nHello 67.000000\nHello sixSeven\n
+include <stdio.h>
+
+struct Hello {
+    void hello(int i) overload {
+        printf("Hello %d\n", i);
+    }
+
+    void hello(float i) overload {
+        printf("Hello %f\n", i);
+    }
+
+    void hello(double i) overload {
+        printf("Hello %f\n", i);
+    }
+
+    void hello(char* s) overload {
+        printf("Hello %s\n", s);
+    }
+}
+
+int main() {
+    Hello h;
+    h.hello(67);
+    h.hello(67.0f);
+    h.hello(67.0);
+    h.hello("sixSeven");
+    return 0;
+}

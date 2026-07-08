@@ -1,11 +1,13 @@
 module backend.codegen;
 
-import std.array : join;
+import frontend;
+import utils;
+
+import std.array : join, array;
+import std.algorithm;
 import std.format;
 import std.stdio;
 import std.conv;
-import frontend;
-import utils;
 
 final class CodeGen
 {
@@ -16,6 +18,7 @@ private:
     TypeExpr fnType;
     bool genHeaderFile;
     string headerFile;
+    ImportResolverContext* context;
 
     bool[string] errorUnions;
     bool fnErrorUnion; // diz se a função atual retorna uma errorUnion
@@ -494,22 +497,21 @@ private:
                     }
                 }
             }
-            return format("%s_%s", typeName, compileCallExpr(as!CallExpr(node.right), !isStatic,
-                    format("%s%s", fromSelf ? "" : "&", id)));
+            return format("%s", compileCallExpr(as!CallExpr(node.right), !isStatic,
+                    format("%s%s", fromSelf ? "" : "&", id), typeName));
         }
 
         string symbol = isArrow ? "->" : ".";
         string left = compileExpr(node.left);
         if (type !is null)
-            if (type.kind == TypeExprKind.Enum || (type.kind == TypeExprKind.Struct && types.exists(
-                    left)))
+            if (type.kind == TypeExprKind.Enum || (type.kind == TypeExprKind.Struct && types.exists(left)))
                 symbol = "_";
 
         return format("%s%s%s", left, symbol, compileExpr(
                 node.right));
     }
 
-    string compileCallExpr(CallExpr node, bool fromMethod = false, string var = "")
+    string compileCallExpr(CallExpr node, bool fromMethod = false, string var = "", string typeName = "")
     {
         string args = fromMethod ? var : "";
         if (node.args.length > 0 && fromMethod)
@@ -521,7 +523,24 @@ private:
             if ((i + 1) < node.args.length)
                 args ~= ", ";
         }
-        return format("%s(%s)", compileExpr(node.callee), args);
+        string callee = compileExpr(node.callee);
+        // writeln("Callee 1: ", callee);
+        if (callee !in context.symbols)
+        {
+            // verifica se é overload
+            string overload = (typeName == "" ? "" : typeName ~ "_") ~ callee ~ "_" ~
+                (node.args.map!(n => n.type_expr is null ? "null" : n.type_expr.toString()).array).join("_");
+            // writeln("Callee: ", overload);
+            // writeln(context.symbols);
+            if (overload in context.symbols)
+                callee = overload;
+            else
+                callee = typeName == "" ? callee : typeName ~ "_" ~ callee;
+            // else
+                // writefln("Compiler warning: The function '%s' was not found.", callee);
+        } else
+            callee = typeName == "" ? callee : typeName ~ "_" ~ callee;
+        return format("%s(%s)", clearNameMangling(callee), args);
     }
 
     string compileCallStmt(CallExpr node, uint ind)
@@ -537,7 +556,7 @@ private:
         {
             if (node.val is null)
             {
-                writeln("Erro: a função não pode retornar void.");
+                writeln("Error: The function cannot return void.");
                 return "return 0;";
             }
             // writeln(node.val);
@@ -565,10 +584,8 @@ private:
 
     void compileStructDecl(StructDecl node, uint ind)
     {
-        if (node.genericT.length > 0)
-            return;
         string name = node.name;
-        if (types.get(name) is null)
+        if (node.genericT.length > 0 || types.get(name) is null) 
             return;
         TypeExpr t = *types.get(name);
         TypeExpr a = actualType;
@@ -581,11 +598,22 @@ private:
         _data ~= "};\n";
         data ~= _data;
         foreach (FnDecl fn; node.functions)
-            compileFnDecl(fn, ind, true, name);
+            compileFnDecl(fn, ind, true, name, node.fromGeneric);
         actualType = a;
     }
 
-    void compileFnDecl(FnDecl fn, uint ind, bool isMethod = false, string methodType = "")
+    string clearNameMangling(string name)
+    {
+        string buff;
+        for (ulong i; i < name.length; i++)
+            if (name[i] == '*')
+                buff ~= 'P';
+            else
+                buff ~= name[i];
+        return buff;
+    }
+
+    void compileFnDecl(FnDecl fn, uint ind, bool isMethod = false, string methodType = "", bool fromGeneric = false)
     {
         defer = []; // limpa
         fnType = fn.type_expr;
@@ -602,17 +630,28 @@ private:
             if ((i + 1) < fn.args.length)
                 args ~= ", ";
         }
+        if (!fromGeneric)
+            methodType = "";
         bool cond = fn.type_expr.kind == TypeExprKind.Function;
         string name = cond ? format("%s(%s)", fn.name, args) : fn.name;
-        string proto = format("%s%s", fn.type_expr.toStrVar(isMethod ? format("%s_%s", methodType, name)
+        name = clearNameMangling(name);
+        // writeln("FUNC NAME: ", name);
+        string proto = format("%s%s", 
+                /* proto */ 
+                fn.type_expr.toStrVar(isMethod 
+                ? format("%s%s", (methodType == "" ? "" : methodType ~ "_"), name)
                 : name),
-            cond ? "" : format("(%s)", args));
+                /* args */ 
+                cond ? "" : format("(%s)", args));
+    // string proto = format("%s%s", fn.type_expr.toStrVar(isMethod ? format("%s_%s", methodType, name)
+    //             : name),
+    //         cond ? "" : format("(%s)", args));
         // string proto = format("%s(%s)", , args);
         protos ~= proto ~ ";";
         emit(proto, ind);
         emit("{", ind);
         proto ~= " {\n";
-        bool err = fnErrorUnion;
+        bool error = fnErrorUnion;
         fnErrorUnion = fn.type_expr.kind == TypeExprKind.Result;
         if (fnErrorUnion)
         {
@@ -642,7 +681,7 @@ private:
         }
         if (!hasReturn)
             deferResolve(ind+4);
-        fnErrorUnion = err;
+        fnErrorUnion = error;
         emit("}\n", ind);
     }
 
@@ -674,13 +713,14 @@ private:
 
 public:
     this(Program program, TypeRegistry types, bool[string] staticFunctions, bool noHeader, bool genHeaderFile, 
-        string headerFile)
+        string headerFile, ImportResolverContext* context)
     {
         this.program = program;
         this.types = types;
         this.fnStatics = staticFunctions;
         this.genHeaderFile = genHeaderFile;
         this.headerFile = headerFile;
+        this.context = context;
         if (noHeader) return;
         cxHeader ~= `
 #ifndef __CLANG_STDINT_H

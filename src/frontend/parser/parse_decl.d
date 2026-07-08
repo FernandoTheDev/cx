@@ -2,7 +2,8 @@ module frontend.parser.parse_decl;
 
 import frontend;
 
-import std.array : join;
+import std.array : join, array;
+import std.algorithm;
 import std.format;
 import std.stdio;
 
@@ -47,15 +48,15 @@ public:
         return new VarDecl(name.s, value, false, texpr, p.getPos(texpr.pos, name.pos));
     }
 
-    Node parseFnDecl(TypeExpr retType, Token name, bool isStatic)
+    Node parseFnDecl(TypeExpr retType, Token name, bool isStatic, string baseName = "")
     {
         TypeExpr[string] vars = p.vars;
         p.vars = (TypeExpr[string]).init;
-        string fnName = name.s;
+        string fnName = (baseName != "" ? baseName ~ "_" : "") ~ name.s;
         p.consume(TokenKind.LParen, "Expected '('.");
         FnArg[] args;
-        // if (isMethod)
-        //     p.consume(TokenKind.Id, "O primeiro argumento de um método é obrigatório.");
+        ubyte flags;
+
         while (!p.check(TokenKind.RParen))
         {
             TypeExpr type = p.parseType.parse();
@@ -68,6 +69,14 @@ public:
             args ~= new FnArg(argName.s, type, val, argName.pos);
         }
         p.consume(TokenKind.RParen, "Expected ')'.");
+
+        if (p.match(TokenKind.Overload))
+        {
+            string types = (args.map!(x => x.type_expr.toString()).array).join("_");
+            fnName =  fnName ~ "_" ~ types;
+            // writeln("fname: ", fnName);
+            flags |= NodeFlags.Overload;
+        }
 
         Node[] body;
         if (p.match(TokenKind.Arrow))
@@ -83,7 +92,6 @@ public:
             p.consume(TokenKind.RBrace, "Expected '}'.");
         }
 
-        ubyte flags;
         if (isStatic)
         {
             flags |= NodeFlags.Static;
@@ -122,7 +130,11 @@ public:
             TypeExpr type = p.parseType.parse();
             Token name = p.consume(TokenKind.Id, "Expected an 'ID'.");
             if (p.check(TokenKind.LParen))
-                functions ~= cast(FnDecl)parseFnDecl(type, name, isStatic);
+            {
+                functions ~= cast(FnDecl)parseFnDecl(type, name, isStatic, genericT.length > 0 ? "" : sname.s);
+                // if (functions[$-1].flags & NodeFlags.Overload)
+                //     functions[$-1].name = sname.s ~ "_" ~ functions[$-1].name;
+            }
             else
                 fields ~= cast(VarDecl)parseVarDecl(type, name, true);
         }
