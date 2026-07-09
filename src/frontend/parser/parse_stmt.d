@@ -105,7 +105,7 @@ public:
 
     Node parseGotoStmt(Position pos)
     {
-        string name = p.consume(TokenKind.Id, "Expected an 'ID'.").s;
+        Node name = p.parseExpr.parse();
         return new GotoStmt(name, pos);
     }
 

@@ -22,17 +22,26 @@ struct String
         return self.ptr;
     }
 
-    char* concat(char* other)
+    char* concat(char* other) overload
     {
         size_t len = other.length;
         size_t newLen = self.length + len + 1;
         char* ptr = malloc(newLen);
         memcpy(ptr, self.ptr, self.length);
         memcpy(ptr + self.length, other, len);
-        size_t l = newLen-1;
-        ptr[l] = '\0';
+        ptr[newLen - 1] = '\0';
+
+        if self.owner free(self.ptr);
+
         self.ptr = ptr;
+        self.length = newLen - 1;
         self.owner = true;
+        return self.ptr;
+    }
+
+    char* concat(String other) overload
+    {
+        self.concat(other.ptr);
         return self.ptr;
     }
 

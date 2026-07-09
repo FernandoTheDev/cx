@@ -1,0 +1,7 @@
+macro Sum(x, y) {
+    x + y
+}
+
+int main() {
+    return Sum(10, 20); // expande em comptime pra x + y
+}

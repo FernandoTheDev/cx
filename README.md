@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="400" alt="cx_logo"/>
+</p>
+
 # The Cx Programming Language
 
 The `Cx` programming language was created for a single reason: to write C code with more syntactic sugar and improvements. `Cx` offers a range of features, some of which are:

@@ -1,45 +1,10 @@
 //! src: The Cx Programming Language\n\n
-include <stdlib.h>
-include <stdio.h>
-
-struct Arena {
-    char* data;
-    u32 size;
-    u32 cap;
-
-    static Arena new(u32 cap) {
-        char* data = calloc(1, cap);
-        return (Arena) {data, 0, cap};
-    }
-
-    u32 alignUp(u32 size)
-    {
-        return (size + 7) & ~7;
-    }
-
-    void* alloc(u32 size)
-    {
-        size = self.alignUp(size);
-        if (self.size + size) > self.cap {
-            // realloc
-            u32 newCap = (self.size + size) * 2;
-            self.cap = newCap;
-            self.size = 0;
-            self.data = realloc(self.data, newCap);
-        }
-        char* data = self.data + self.size;
-        self.size = self.size + size;
-        return (void*) data;
-    }
-
-    void delete() {
-        free(self.data);
-    }
-}
+import std.arena;
+import std.io;
 
 int main() {
     Arena arena = Arena.new(64);
-    defer arena.delete();
+    defer arena.free();
 
     char* filename = "./examples/io/file.txt";
     FILE* file = fopen(filename, "rb");
