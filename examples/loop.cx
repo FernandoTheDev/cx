@@ -1,0 +1,9 @@
+//# 0
+import std.io;
+int main() {
+    char* name = "tpose";
+    int i = 0;
+    while name[i] != '\0'
+        printf("%c ", name[i++]);    
+    return 0;
+}

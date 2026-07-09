@@ -148,7 +148,7 @@ private:
         typedefs ~= format("typedef union %s %s;", name, name);
         string _data = format("union %s\n{\n", name);
         foreach (string field, TypeExpr type; node.fields)
-            _data ~= indent(format("%s %s;", type.toString(), field), ind + 4);
+            _data ~= indent(format("%s %s;\n", type.toString(), field), ind + 4);
         _data ~= "};\n";
         data ~= _data;
     }
@@ -218,7 +218,7 @@ private:
 
         case NodeKind.GotoStmt:
             GotoStmt n = cast(GotoStmt) node;
-            return indent(format("goto %s;", n.label), ind);
+            return indent(format("goto %s;", compileExpr(n.label)), ind);
 
         case NodeKind.LabelStmt:
             LabelStmt n = cast(LabelStmt) node;

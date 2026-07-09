@@ -1367,8 +1367,8 @@ class ImportStmt : Node
 
 class GotoStmt : Node
 {
-    string label;
-    this(string label, Position pos)
+    Node label;
+    this(Node label, Position pos)
     {
         super(NodeKind.GotoStmt, pos);
         this.label = label;
@@ -1381,7 +1381,7 @@ class GotoStmt : Node
 
     override GotoStmt dup()
     {
-        auto n = new GotoStmt(label, pos);
+        auto n = new GotoStmt(label.dup(), pos);
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;

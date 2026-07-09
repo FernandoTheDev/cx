@@ -113,6 +113,10 @@ public:
             Node val = parse(getPrecedence(tk.kind));
             return new UnaryExpr(val, tk.kind, p.getPos(tk.pos, val.pos), false);
 
+        case TokenKind.And: // &&x
+            Node val = parse(getPrecedence(tk.kind));
+            return new UnaryExpr(val, tk.kind, p.getPos(tk.pos, val.pos), false);
+
         case TokenKind.LBrace:
             return parseStructLit(tk.pos);
 

@@ -1,0 +1,12 @@
+//# 67
+
+int main() {
+    void*[] tables = [&&end, &&middle, &&start];
+    goto *tables[2];
+    end:
+        return 0;
+    middle:
+        return 67;
+    start:
+        goto middle;
+}
