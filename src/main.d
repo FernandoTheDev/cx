@@ -18,6 +18,7 @@ import std.array;
 import std.file;
 
 __gshared Generic generic;
+__gshared bool noHeader;
 
 pragma(inline, true)
 void check_diagnostic(Diagnostics d)
@@ -104,7 +105,7 @@ int main(string[] argv)
 		}
 	}
 
-	bool emitc, opt, dbg, verMessage, helpMessage, noHeader, genHeader;
+	bool emitc, opt, dbg, verMessage, helpMessage, genHeader;
 	string[] link, cflags;
 	string output, target;
 
