@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="400" alt="cx_logo"/>
+  <img src="assets/logo.png" width="300" alt="cx_logo"/>
 </p>
 
 # The Cx Programming Language

@@ -35,6 +35,6 @@ int main() {
     Bar<int> bar = {&f};
     (*bar.s).val = 67;
     Cool<int>.e("Fernando", 18);
-    // Entry<int>* entry = Entry<int>.create("Fernando", 37);
+    Entry<int>* entry = Entry<int>.create("Fernando", 37);
     return foo.val;
 }
