@@ -42,7 +42,7 @@ void showHelp()
 	writeln("  -v, --version         Show the compiler version and exit");
 	writeln("      --no-header       It will not automatically generate the Cx header.");
 	writeln("      --gen-header      It will generate a .h file and a .c file without compiling at the end.");
-	writeln("      --cflags      	 Pass compilation flags to the C compiler.");
+	writeln("      --cflags      	Pass compilation flags to the C compiler.");
 	writeln();
 	writeln("Environment:");
 	writeln("  CC                    C compiler used to build the output (default: cc)");
@@ -214,17 +214,17 @@ int main(string[] argv)
 	}
 
 	string c_compiler = environment.get("CC", "cc");
-	string command = format("%s %s -O%d -o %s %s %s", c_compiler, filec, opt ? 2 : 0, output,
+	string command = format("%s %s %s -o %s %s %s", c_compiler, filec, (opt ? "-O2" : ""), output,
 		link.length > 0 ? (link.map!(l => format("-l%s", l).array).join(" ")) : "", cflags.join(" "));
 	if (dbg)
 		writeln("C Compiler: ", c_compiler);
 
 	auto exec = executeShell(command);
+	if (dbg)
+		writeln("Command: ", command);
 	if (exec.status != 0)
 	{
 		writeln("An error occurred while compiling the program.");
-		if (dbg)
-			writeln("Command: ", command);
 		writeln(exec.output);
 		return exec.status;
 	}
