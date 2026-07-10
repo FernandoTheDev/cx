@@ -16,6 +16,7 @@ private:
     TypeRegistry types;
     TypeExpr actualType;
     TypeExpr fnType;
+    bool isFnStatic;
     bool genHeaderFile;
     string headerFile;
     ImportResolverContext* context;
@@ -572,7 +573,8 @@ private:
             val = format("(%s) { .valid = %s, .val.%s = %s }",
                 fnUnion, ok ? "true" : "false", ok ? "ok" : "error", val);
         }
-        return indent(format("return %s%s;", val == "self" && fnType !is null ? "*" : "", val), ind);
+        return indent(format("return %s%s;", (val == "self" && !isFnStatic && fnType.kind != TypeExprKind.Pointer) 
+            && fnType !is null ? "*" : "", val), ind);
     }
 
     string compileVarDecl(VarDecl node, uint ind)
@@ -618,7 +620,8 @@ private:
         defer = []; // limpa
         fnType = fn.type_expr;
         string args;
-        bool hasSelf = !(fn.flags & NodeFlags.Static);
+        isFnStatic = !!(fn.flags & NodeFlags.Static);
+        bool hasSelf = !isFnStatic;
         if (isMethod && hasSelf)
             args ~= format("%s* self", methodType);
         if (fn.args.length > 0 && isMethod && hasSelf)

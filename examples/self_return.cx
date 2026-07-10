@@ -1,0 +1,18 @@
+//# 67
+
+struct Foo {
+    static int bar() {
+        int self = 67;
+        return self;
+    }
+
+    Foo foo() {
+        return self;
+    }
+}
+
+int main() {
+    Foo foo = {};
+    foo.foo();
+    return Foo.bar();
+}
