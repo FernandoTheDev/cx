@@ -9,11 +9,8 @@ import std.stdio;
 
 class Parser
 {
-private:
     Token[] tokens;
     uint offset;
-
-public:
     Generic generic;
     TypeExpr[string] vars;
     TypeRegistry types;

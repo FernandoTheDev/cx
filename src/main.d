@@ -42,6 +42,7 @@ void showHelp()
 	writeln("  -v, --version         Show the compiler version and exit");
 	writeln("      --no-header       It will not automatically generate the Cx header.");
 	writeln("      --gen-header      It will generate a .h file and a .c file without compiling at the end.");
+	writeln("      --cflags      	 Pass compilation flags to the C compiler.");
 	writeln();
 	writeln("Environment:");
 	writeln("  CC                    C compiler used to build the output (default: cc)");
@@ -49,6 +50,7 @@ void showHelp()
 	writeln("Examples:");
 	writeln("  cx main.cx");
 	writeln("  cx main.cx --opt -o main");
+	writeln("  cx main.cx --cflags=\"--O2 -o main\"");
 	writeln("  cx main.cx --emit-c");
 	writeln("  cx main.cx -L m -L pthread -o app");
 	writeln("  CC=x86_64-w64-mingw32-gcc cx main.cx -o main.exe");
@@ -103,7 +105,7 @@ int main(string[] argv)
 	}
 
 	bool emitc, opt, dbg, verMessage, helpMessage, noHeader, genHeader;
-	string[] link;
+	string[] link, cflags;
 	string output, target;
 
 	try
@@ -118,6 +120,7 @@ int main(string[] argv)
 			"target", &target,
 			"no-header", &noHeader,
 			"gen-header", &genHeader,
+			"cflags", &cflags,
 		);
 	catch (GetOptException e)
 	{
@@ -177,6 +180,7 @@ int main(string[] argv)
 	catch (Exception e)
 	{
 		writefln("An internal error occurred in the parser: %s", e.message);
+		// writeln(e);
 		return 1;
 	}
 
@@ -210,8 +214,8 @@ int main(string[] argv)
 	}
 
 	string c_compiler = environment.get("CC", "cc");
-	string command = format("%s %s -O%d -o %s %s", c_compiler, filec, opt ? 2 : 0, output,
-		link.length > 0 ? (link.map!(l => format("-l%s", l).array).join(" ")) : "");
+	string command = format("%s %s -O%d -o %s %s %s", c_compiler, filec, opt ? 2 : 0, output,
+		link.length > 0 ? (link.map!(l => format("-l%s", l).array).join(" ")) : "", cflags.join(" "));
 	if (dbg)
 		writeln("C Compiler: ", c_compiler);
 

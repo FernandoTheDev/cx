@@ -3,13 +3,6 @@ include <llvm-c/Core.h>
 include <llvm-c/Analysis.h>
 include <stdio.h>
 
-alias LLVMContextRef // alias com tipo opaco mas reconhecido
-alias LLVMModuleRef
-alias LLVMBuilderRef
-alias LLVMTypeRef
-alias LLVMValueRef
-alias LLVMBasicBlockRef
-
 struct LLVMWrapper {
     LLVMContextRef context;
     LLVMModuleRef module;

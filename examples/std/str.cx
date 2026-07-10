@@ -4,14 +4,14 @@ import std.io;
 
 int main() {
     String s1 = String.from("Fernando");
-    defer s1.free();
-
     String s2 = String.from(" the ");
+
+    defer s1.free();
     defer s2.free();
 
     s1.concat(s2);
     s1.concat("Dev");
+
     printf("Hello %s\n", s1.data());
-    
     return 0;
 }

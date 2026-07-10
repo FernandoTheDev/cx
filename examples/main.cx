@@ -13,17 +13,6 @@ int main() {
     int* y = &x;
     *y = 67;
 
-    // Usuario u = Usuario{name};
-    // u.get()
-
     printf("%s %d %d\n", name, val, x);
     return 0;
 }
-
-// struct Usuario {
-//     char* nome;
-
-//     char* get(self) {
-//         return self.nome;
-//     }
-// }

@@ -48,17 +48,21 @@ public:
 
         case TokenKind.Id:
             TypeExpr* t = p.types.get(tk.s);
-            // writeln(tk.pos.toString());
-            // writeln("T: ", t);
-            // writeln("S: ", tk.s, "\n");
-            if (t && (
-                    p.peek().kind == TokenKind.Id
-                    || p.peek().kind == TokenKind.Star
-                    || p.peek().kind == TokenKind.LParen
-                    || p.peek().kind == TokenKind.LThan
-                    || p.peek().kind == TokenKind.LBracket
-                    || p.peek().kind == TokenKind.Bang
-                ))
+            TypeExpr t2;
+            bool isType = t !is null;
+            if (!t)
+            {
+                t2 = typeHeuristic(tk);
+                isType = t2 !is null;
+                if (isType)
+                {
+                    t = &t2;
+                    // writeln(t.pos);
+                    // writeln("Heuristica: ", t.toString());
+                }
+            }
+            
+            if (isType && looksLikeTypeStart(p.peek().kind))
             {
                 p.previous2(); // volta o advance feito
                 TypeExpr type = p.parseType.parse();
@@ -138,6 +142,111 @@ public:
         }
     }
 
+    bool looksLikeTypeStart(TokenKind k)
+    {
+        return k == TokenKind.Id
+            || k == TokenKind.Star
+            || k == TokenKind.LParen
+            || k == TokenKind.LThan
+            || k == TokenKind.LBracket
+            || k == TokenKind.Bang;
+    }
+
+    bool canPrecedeTypeStart(TokenKind k)
+    {
+        return k == TokenKind.SemiColon
+            || k == TokenKind.LBrace
+            || k == TokenKind.RBrace;
+    }
+
+    bool skipTypeTokens()
+    {
+        // if (!p.check(TokenKind.Id))
+        // {
+        //     writeln("Skip Tokens: ", p.peek().kind);
+        //     return false;
+        // }
+        // p.advance(); // consome o nome base do tipo
+
+        while (true)
+        {
+            if (p.isAtEnd())
+                return false;
+            if (p.match(TokenKind.Star))
+                continue;
+            if (p.match(TokenKind.Bang))
+                continue;
+
+            if (p.match(TokenKind.LBracket))
+            {
+                // array: [ ] | [ id ] | [ numero ]
+                if (!p.check(TokenKind.RBracket))
+                    p.advance(); // tamanho (id ou numeric) — não valida aqui, é só heurístico
+                if (!p.match(TokenKind.RBracket))
+                    return false;
+                continue;
+            }
+
+            if (p.match(TokenKind.LThan))
+            {
+                while (!p.isAtEnd() && !p.match(TokenKind.GThan))
+                    p.advance();
+                continue;
+            }
+
+            if (p.match(TokenKind.LParen))
+            {
+                while (!p.isAtEnd() && !p.match(TokenKind.RParen))
+                    p.advance();
+                continue;
+            }
+
+            break;
+        }
+        return true;
+    }
+
+    TypeExpr typeHeuristic(Token name)
+    {
+        // writeln("Heuristic: ", name.s);
+        // name.print();
+
+        // writeln("LOOKS LIKE");
+        if (!looksLikeTypeStart(p.peek().kind))
+            return null;
+
+        // writeln("BEFORE >= 2");
+        if (p.offset >= 2 && !canPrecedeTypeStart(p.tokens[p.offset - 2].kind))
+            return null;
+
+        uint offset = p.offset;
+        scope (exit)
+            p.offset = offset;
+
+        // writeln("BEFORE SKIP");
+        // p.peek().print();
+
+        if (!skipTypeTokens())
+            return null;
+
+        // writeln("BEFORE OK");
+        // p.peek().print();
+        if (!p.check(TokenKind.Id))
+            return null;
+
+        if (p.future(TokenKind.Equals, 1) 
+            || p.future(TokenKind.SemiColon, 1) 
+            || p.future(TokenKind.Dot, 1) 
+            || p.future(TokenKind.LParen, 1)
+            )
+        {
+            // writeln("OK");
+            return new TypeExprNamed(name.s, name.pos);
+        }
+
+        return null;
+    }
+
     Node parseArrayLit(Position pos)
     {
         Node[] values;
@@ -169,7 +278,7 @@ public:
         if (p.check(TokenKind.Id))
         {
             if (
-                p.future(TokenKind.Star, 1) 
+                p.future(TokenKind.Star, 1)
                 || p.future(TokenKind.RParen, 1)
                 || p.future(TokenKind.LThan, 1)
                 || p.future(TokenKind.LBracket, 1)
