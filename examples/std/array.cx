@@ -1,0 +1,18 @@
+import std.io;
+import std.array;
+
+alias Value = int!ArrayError
+
+int main() {
+    Array<int> arr = Array<int>.new(1);
+    
+    arr.push(60);
+    arr.push(7);
+    Value e = arr.get(2);
+
+    if !e.valid {
+        printf("Error: %d\n", e.error);
+    }
+
+    return arr.get(0).ok + arr.get(1).ok;
+}
