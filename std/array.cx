@@ -11,15 +11,15 @@ struct Array<T> {
 
     static Array<T> new(uint cap)
     {
-        return (Array<T>) {calloc(1, cap), 0, cap};
+        return (Array<T>) {calloc(cap, sizeof(T)), 0, cap};
     }
 
     void push(T val)
     {
-        if (self.size + 1) >= self.cap 
+        if self.size >= self.cap 
         {
             uint newCap = self.cap * 2;
-            realloc(self.data, newCap);
+            self.data = realloc(self.data, newCap * sizeof(T));
             self.cap = newCap;
         }
         self.data[self.size++] = val;
@@ -30,5 +30,10 @@ struct Array<T> {
         if offset >= self.size
             return ArrayError.NotFound;
         return self.data[offset];
+    }
+
+    void free()
+    {
+        free(self.data);
     }
 }
