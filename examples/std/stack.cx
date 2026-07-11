@@ -1,0 +1,77 @@
+import std.io;
+import std.stack;
+
+alias Value = int!StackError
+
+int main() {
+    // Stack with capacity 3, deliberately small to force an overflow
+    Stack<int> stack = Stack<int>.new(3);
+    defer stack.free();
+
+    // Fill the stack up to its limit
+    Value r1 = stack.push(10);
+    Value r2 = stack.push(20);
+    Value r3 = stack.push(30);
+
+    if !r1.valid || !r2.valid || !r3.valid {
+        printf("Unexpected error while filling the stack\n");
+        return 1;
+    }
+
+    // Try to push beyond capacity -> Overflow expected
+    Value r4 = stack.push(40);
+    if !r4.valid {
+        printf("Expected overflow when pushing to a full stack: %d\n", r4.error);
+    } else {
+        printf("ERROR: push beyond capacity should have failed\n");
+        return 1;
+    }
+
+    // peek should not change the size
+    Value top = stack.peek();
+    if top.valid {
+        printf("Top before draining: %d (size=%d)\n", top.ok, stack.size);
+    }
+
+    // Drain the stack completely
+    Value p1 = stack.pop();
+    Value p2 = stack.pop();
+    Value p3 = stack.pop();
+
+    if p1.valid && p2.valid && p3.valid {
+        printf("Pop in LIFO order: %d %d %d\n", p1.ok, p2.ok, p3.ok);
+    }
+
+    // Try to pop past the bottom -> Underflow expected
+    Value p4 = stack.pop();
+    if !p4.valid {
+        printf("Expected underflow when popping an empty stack: %d\n", p4.error);
+    } else {
+        printf("ERROR: pop on empty stack should have failed\n");
+        return 1;
+    }
+
+    // peek should also fail with Underflow on an empty stack
+    Value emptyTop = stack.peek();
+    if !emptyTop.valid {
+        printf("Expected underflow when peeking an empty stack: %d\n", emptyTop.error);
+    } else {
+        printf("ERROR: peek on empty stack should have failed\n");
+        return 1;
+    }
+
+    // Stack with capacity 0 -> should fail on the very first push
+    Stack<int> zeroStack = Stack<int>.new(0);
+    defer zeroStack.free();
+
+    Value z1 = zeroStack.push(1);
+    if !z1.valid {
+        printf("Expected overflow on a zero-capacity stack: %d\n", z1.error);
+    } else {
+        printf("ERROR: push on zero-capacity stack should have failed\n");
+        return 1;
+    }
+
+    printf("All boundary tests passed\n");
+    return 0;
+}
