@@ -69,20 +69,34 @@ jobs:
           ldc2 --version
           dub --version
 
-      - name: Ensure llvm-c headers are on the default system include path
+      - name: Ensure llvm-c and llvm headers are on the default system include path
         run: |
-          if [ -f /usr/include/llvm-c/Core.h ]; then
-            echo "llvm-c/Core.h already on default include path"
-            exit 0
-          fi
-          FOUND_DIR=$(find / -type d -name "llvm-c" -path "*include*" 2>/dev/null | head -n 1)
-          if [ -z "$FOUND_DIR" ]; then
-            echo "llvm-c headers not found anywhere on this system"
-            exit 1
-          fi
-          echo "Found llvm-c headers at: $FOUND_DIR"
-          ln -s "$FOUND_DIR" /usr/include/llvm-c
+          # llvm-c/Core.h inclui internamente llvm/Config/llvm-config.h,
+          # que fica numa pasta IRMÃ (llvm/), não dentro de llvm-c/.
+          # No Ubuntu ambas ficam em /usr/lib/llvm-XX/include/{llvm-c,llvm}/
+          # (path versionado), então precisamos linkar as duas para o
+          # path padrão que o cc sem -I consegue achar: /usr/include.
+          ensure_link() {
+            name="$1"
+            marker="$2"
+            if [ -f "/usr/include/$name/$marker" ]; then
+              echo "$name already on default include path"
+              return 0
+            fi
+            FOUND_DIR=$(find / -type d -name "$name" -path "*include*" 2>/dev/null | grep -v '^/usr/include$' | head -n 1)
+            if [ -z "$FOUND_DIR" ]; then
+              echo "WARNING: $name headers not found anywhere on this system"
+              return 1
+            fi
+            echo "Found $name headers at: $FOUND_DIR"
+            ln -sfn "$FOUND_DIR" "/usr/include/$name"
+          }
+
+          ensure_link "llvm-c" "Core.h"
+          ensure_link "llvm" "Config/llvm-config.h"
+
           test -f /usr/include/llvm-c/Core.h
+          test -f /usr/include/llvm/Config/llvm-config.h
 
       - name: Ensure llvm-config is on PATH
         run: |
