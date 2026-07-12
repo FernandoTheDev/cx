@@ -42,18 +42,18 @@ jobs:
 
       - name: Install ldc2, dub (Fedora)
         if: matrix.distro == 'fedora'
-        run: dnf install -y ldc dub
+        run: dnf install -y ldc dub cc
 
       - name: Install ldc2, dub (Ubuntu)
         if: matrix.distro == 'ubuntu'
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub
+          apt-get install -y ldc dub cc
 
       - name: Install ldc2, dub (Arch)
         if: matrix.distro == 'arch'
-        run: pacman -Sy --noconfirm ldc dub
+        run: pacman -Sy --noconfirm ldc dub cc
 
       - name: Verify dependencies
         run: |

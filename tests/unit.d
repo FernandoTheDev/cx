@@ -124,7 +124,7 @@ string readTextSafe(string path)
     return readText(path);
 }
 
-void main()
+int main()
 {
     string folder = "examples";
     ulong sucesso, erros, ignorados;
@@ -162,4 +162,6 @@ void main()
     writefln("ERROS:     %d", erros);
     writefln("IGNORADOS: %d", ignorados);
     writefln("TOTAL:     %d", sucesso + erros + ignorados);
+
+    return erros ? 1 : 0;
 }
