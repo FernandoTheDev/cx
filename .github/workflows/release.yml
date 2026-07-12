@@ -11,7 +11,7 @@ permissions:
 jobs:
   build-release:
     name: Build release artifact
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ubuntu:latest
 
