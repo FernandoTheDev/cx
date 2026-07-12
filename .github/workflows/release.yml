@@ -25,7 +25,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ldc2 + dub + gcc + llvm-21-dev
+      - name: Install ldc2 + dub + gcc + llvm-dev
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
@@ -45,6 +45,21 @@ jobs:
           echo "Found llvm-c headers at: $FOUND_DIR"
           ln -s "$FOUND_DIR" /usr/include/llvm-c
           test -f /usr/include/llvm-c/Core.h
+
+      - name: Ensure llvm-config is on PATH
+        run: |
+          if command -v llvm-config >/dev/null 2>&1; then
+            echo "llvm-config already on PATH: $(command -v llvm-config)"
+            exit 0
+          fi
+          FOUND=$(find / -type f -name "llvm-config*" 2>/dev/null | grep -v '\.so' | head -n 1)
+          if [ -z "$FOUND" ]; then
+            echo "llvm-config not found; tests/unit.d will fall back to no -L flag"
+            exit 0
+          fi
+          echo "Found llvm-config at: $FOUND"
+          ln -s "$FOUND" /usr/local/bin/llvm-config
+          llvm-config --version
 
       - name: Build release binary
         run: |

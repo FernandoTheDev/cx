@@ -10,6 +10,7 @@ import std.process;
 import std.typecons;
 import std.range;
 import std.conv;
+import std.string;
 
 string escape(string str)
 {
@@ -23,12 +24,12 @@ string escape(string str)
             char esc = str[offset];
             switch (esc)
             {
-            case 'n':
-                buffer ~= '\n';
-                offset++;
-                continue;
-            default:
-                break;
+                case 'n':
+                    buffer ~= '\n';
+                    offset++;
+                    continue;
+                default:
+                    break;
             }
         }
         buffer ~= [ch];
@@ -44,7 +45,30 @@ struct TestResult
     bool ignored;
 }
 
-TestResult runTest(string filename)
+// Descobre a major version do LLVM instalado no sistema, na ordem:
+// 1) variável de ambiente LLVM_LINK_VERSION (override manual, útil em CI)
+// 2) `llvm-config --version`
+// 3) fallback vazio (nenhuma flag -L é passada, deixa o cx/gcc resolverem sozinhos)
+string detectLlvmLinkFlag()
+{
+    string envOverride = environment.get("LLVM_LINK_VERSION", "");
+    if (envOverride.length > 0)
+        return format("-L LLVM-%s", envOverride);
+
+    auto res = executeShell("llvm-config --version");
+    if (res.status == 0)
+    {
+        string ver = res.output.strip();
+        auto dot = ver.indexOf('.');
+        string major = dot > 0 ? ver[0 .. dot] : ver;
+        if (major.length > 0)
+            return format("-L LLVM-%s", major);
+    }
+
+    return "";
+}
+
+TestResult runTest(string filename, string llvmLinkFlag)
 {
     alias Exec = Tuple!(int, "status", string, "output");
     TestResult res;
@@ -71,7 +95,7 @@ TestResult runTest(string filename)
     // 1) Cx -> C
     string llvm;
     if (filename.length > 13 && filename[9..13] == "llvm")
-        llvm = "-L LLVM-22";
+        llvm = llvmLinkFlag;
     Exec cxComp = executeShell(format("cx %s --output %s %s", filename, binFile, llvm));
     if (cxComp.status != 0)
     {
@@ -129,6 +153,12 @@ int main()
     string folder = "examples";
     ulong sucesso, erros, ignorados;
 
+    string llvmLinkFlag = detectLlvmLinkFlag();
+    if (llvmLinkFlag.length > 0)
+        writefln("=== LLVM link flag detectada: %s ===", llvmLinkFlag);
+    else
+        writeln("=== Aviso: não foi possível detectar versão do LLVM via llvm-config; testes llvm*.cx podem falhar ===");
+
     DirEntry[] dir = dirEntries(folder, SpanMode.depth)
         .filter!(x => x.name.endsWith(".cx"))
         .array
@@ -138,7 +168,7 @@ int main()
     writeln("=== Cx ===");
     foreach (DirEntry key; dir)
     {
-        TestResult res = runTest(key.name);
+        TestResult res = runTest(key.name, llvmLinkFlag);
         if (res.ignored)
         {
             writefln("  IGNORADO  %s", res.filename);
