@@ -40,18 +40,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ldc2, dub, rdmd (Fedora)
+      - name: Install ldc2, dub (Fedora)
         if: matrix.distro == 'fedora'
         run: dnf install -y ldc dub
 
-      - name: Install ldc2, dub, rdmd (Ubuntu)
+      - name: Install ldc2, dub (Ubuntu)
         if: matrix.distro == 'ubuntu'
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y ldc dub
 
-      - name: Install ldc2, dub, rdmd (Arch)
+      - name: Install ldc2, dub (Arch)
         if: matrix.distro == 'arch'
         run: pacman -Sy --noconfirm ldc dub
 
@@ -59,7 +59,6 @@ jobs:
         run: |
           command -v ldc2
           command -v dub
-          command -v rdmd
           ldc2 --version
           dub --version
 
@@ -76,5 +75,11 @@ jobs:
           which cx
           cx --version
 
-      - name: Run test suite (rdmd tests/unit.d)
-        run: rdmd tests/unit.d
+      - name: Compile test suite with ldc2
+        run: ldc2 tests/unit.d -of=tests/unit_test
+
+      - name: Run test suite
+        run: ./tests/unit_test
+
+      - name: Clean up test artifacts
+        run: rm -f ./tests/unit_test ./tests/unit_test.o ./unit_test.o
