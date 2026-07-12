@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: build + test (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: fedora
+            image: fedora:latest
+          - distro: ubuntu
+            image: ubuntu:latest
+          - distro: arch
+            image: archlinux:latest
+
+    steps:
+      - name: Install git (needed before checkout on bare containers)
+        run: |
+          if command -v dnf >/dev/null 2>&1; then
+            dnf install -y git which
+          elif command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y git which
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Sy --noconfirm git which
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ldc2, dub, rdmd (Fedora)
+        if: matrix.distro == 'fedora'
+        run: dnf install -y ldc dub
+
+      - name: Install ldc2, dub, rdmd (Ubuntu)
+        if: matrix.distro == 'ubuntu'
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ldc dub
+
+      - name: Install ldc2, dub, rdmd (Arch)
+        if: matrix.distro == 'arch'
+        run: pacman -Sy --noconfirm ldc dub
+
+      - name: Verify dependencies
+        run: |
+          command -v ldc2
+          command -v dub
+          command -v rdmd
+          ldc2 --version
+          dub --version
+
+      - name: Build + install cx (./build.sh)
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+
+      - name: Add ~/.local/bin to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify cx is installed and on PATH
+        run: |
+          which cx
+          cx --version
+
+      - name: Run test suite (rdmd tests/unit.d)
+        run: rdmd tests/unit.d
