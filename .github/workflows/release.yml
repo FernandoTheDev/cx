@@ -25,11 +25,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ldc2 + dub
+      - name: Install ldc2 + dub + llvm-21-dev
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub zip
+          apt-get install -y ldc dub zip llvm-21-dev cc
 
       - name: Build release binary
         run: |
@@ -39,6 +39,11 @@ jobs:
       - name: Verify binary
         run: |
           ./cx --version
+
+      - name: Verify llvm-c/Core.h is available
+        run: |
+          find / -name "Core.h" -path "*llvm-c*" 2>/dev/null | head -n 1 | grep -q . \
+            || { echo "llvm-c/Core.h not found on this system"; exit 1; }
 
       - name: Run test suite before packaging
         run: |

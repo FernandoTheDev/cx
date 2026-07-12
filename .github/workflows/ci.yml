@@ -42,18 +42,22 @@ jobs:
 
       - name: Install ldc2, dub (Fedora)
         if: matrix.distro == 'fedora'
-        run: dnf install -y ldc dub cc
+        run: dnf install -y ldc dub
 
-      - name: Install ldc2, dub (Ubuntu)
+      - name: Install llvm-devel (Fedora)
+        if: matrix.distro == 'fedora'
+        run: dnf install -y llvm-devel
+
+      - name: Install ldc2, dub, llvm-21-dev (Ubuntu)
         if: matrix.distro == 'ubuntu'
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub cc
+          apt-get install -y ldc dub llvm-21-dev
 
-      - name: Install ldc2, dub (Arch)
+      - name: Install ldc2, dub, llvm (Arch)
         if: matrix.distro == 'arch'
-        run: pacman -Sy --noconfirm ldc dub cc
+        run: pacman -Sy --noconfirm ldc dub llvm
 
       - name: Verify dependencies
         run: |
@@ -61,6 +65,11 @@ jobs:
           command -v dub
           ldc2 --version
           dub --version
+
+      - name: Verify llvm-c/Core.h is available
+        run: |
+          find / -name "Core.h" -path "*llvm-c*" 2>/dev/null | head -n 1 | grep -q . \
+            || { echo "llvm-c/Core.h not found on this system"; exit 1; }
 
       - name: Build + install cx (./build.sh)
         run: |
