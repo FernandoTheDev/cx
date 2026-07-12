@@ -25,6 +25,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install ldc2 + dub + gcc + llvm-dev
         run: |
           export DEBIAN_FRONTEND=noninteractive
