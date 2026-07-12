@@ -25,11 +25,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ldc2 + dub + llvm-21-dev
+      - name: Install ldc2 + dub + gcc + llvm-21-dev
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub zip llvm-21-dev cc
+          apt-get install -y ldc dub zip gcc llvm-21-dev
 
       - name: Build release binary
         run: |

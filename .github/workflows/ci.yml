@@ -28,13 +28,13 @@ jobs:
       - name: Install git (needed before checkout on bare containers)
         run: |
           if command -v dnf >/dev/null 2>&1; then
-            dnf install -y git which cc
+            dnf install -y git which
           elif command -v apt-get >/dev/null 2>&1; then
             export DEBIAN_FRONTEND=noninteractive
             apt-get update
-            apt-get install -y git which cc
+            apt-get install -y git which
           elif command -v pacman >/dev/null 2>&1; then
-            pacman -Sy --noconfirm git which cc
+            pacman -Sy --noconfirm git which
           fi
 
       - name: Checkout
@@ -42,18 +42,18 @@ jobs:
 
       - name: Install ldc2, dub (Fedora)
         if: matrix.distro == 'fedora'
-        run: dnf install -y ldc dub cc
+        run: dnf install -y ldc dub
 
       - name: Install llvm-devel (Fedora)
         if: matrix.distro == 'fedora'
-        run: dnf install -y llvm-devel cc
+        run: dnf install -y llvm-devel
 
-      - name: Install ldc2, dub, llvm-21-dev (Ubuntu)
+      - name: Install ldc2, dub, gcc, llvm-21-dev (Ubuntu)
         if: matrix.distro == 'ubuntu'
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub llvm-21-dev cc
+          apt-get install -y ldc dub gcc llvm-21-dev
 
       - name: Install ldc2, dub, llvm (Arch)
         if: matrix.distro == 'arch'
