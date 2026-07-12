@@ -1,0 +1,47 @@
+import std.lib;
+
+enum StackError
+{
+    Overflow,
+    Underflow,
+}
+
+struct Stack<T>
+{
+    T *data;
+    uint size;
+    uint cap;
+
+    static Stack<T> new (uint cap)
+    {
+        T *data = calloc(1, cap * sizeof(T));
+        return (Stack<T>){data, 0, cap};
+    }
+
+    bool isEmpty() => self.size == 0
+    bool isFull() => self.size >= self.cap
+
+    int !StackError push(T val)
+    {
+        if self.isFull() return StackError.Overflow;
+        self.data[self.size++] = val;
+        return 67;
+    }
+
+    T!StackError pop()
+    {
+        if self.isEmpty() return StackError.Underflow;
+        return self.data[--self.size];
+    }
+
+    T!StackError peek()
+    {
+        if self.isEmpty() return StackError.Underflow;
+        return self.data[self.size - 1];
+    }
+
+    void free()
+    {
+        free(self.data);
+    }
+}

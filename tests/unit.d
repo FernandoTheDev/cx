@@ -10,6 +10,7 @@ import std.process;
 import std.typecons;
 import std.range;
 import std.conv;
+import std.string;
 
 string escape(string str)
 {
@@ -23,12 +24,12 @@ string escape(string str)
             char esc = str[offset];
             switch (esc)
             {
-            case 'n':
-                buffer ~= '\n';
-                offset++;
-                continue;
-            default:
-                break;
+                case 'n':
+                    buffer ~= '\n';
+                    offset++;
+                    continue;
+                default:
+                    break;
             }
         }
         buffer ~= [ch];
@@ -44,7 +45,30 @@ struct TestResult
     bool ignored;
 }
 
-TestResult runTest(string filename)
+// Detects the major LLVM version installed on the system, in order:
+// 1) LLVM_LINK_VERSION environment variable (manual override, useful in CI)
+// 2) `llvm-config --version`
+// 3) empty fallback (no -L flag passed, let cx/gcc resolve it on their own)
+string detectLlvmLinkFlag()
+{
+    string envOverride = environment.get("LLVM_LINK_VERSION", "");
+    if (envOverride.length > 0)
+        return format("-L LLVM-%s", envOverride);
+
+    auto res = executeShell("llvm-config --version");
+    if (res.status == 0)
+    {
+        string ver = res.output.strip();
+        auto dot = ver.indexOf('.');
+        string major = dot > 0 ? ver[0 .. dot] : ver;
+        if (major.length > 0)
+            return format("-L LLVM-%s", major);
+    }
+
+    return "";
+}
+
+TestResult runTest(string filename, string llvmLinkFlag)
 {
     alias Exec = Tuple!(int, "status", string, "output");
     TestResult res;
@@ -71,17 +95,17 @@ TestResult runTest(string filename)
     // 1) Cx -> C
     string llvm;
     if (filename.length > 13 && filename[9..13] == "llvm")
-        llvm = "-L LLVM-22";
+        llvm = llvmLinkFlag;
     Exec cxComp = executeShell(format("cx %s --output %s %s", filename, binFile, llvm));
     if (cxComp.status != 0)
     {
         res.ok  = false;
-        res.err = "Falha no compilador Cx:\n" ~ cxComp.output;
+        res.err = "Cx compiler failed:\n" ~ cxComp.output;
         remove_if_exists(cFile);
         return res;
     }
 
-    // 2) roda o binário
+    // 2) run the binary
     Exec run = executeShell(format("./%s", binFile));
     int code = run.status;
     string output = run.output;
@@ -94,7 +118,7 @@ TestResult runTest(string filename)
         if (expected != code)
         {
             res.ok  = false;
-            res.err = format("Código esperado '%d', recebido '%d'.", expected, code);
+            res.err = format("Expected exit code '%d', got '%d'.", expected, code);
         }
     }
     else if (fromOutput)
@@ -103,7 +127,7 @@ TestResult runTest(string filename)
         if (output != expected)
         {
             res.ok  = false;
-            res.err = format("Saída esperada '%s', recebida '%s'.", expected, output);
+            res.err = format("Expected output '%s', got '%s'.", expected, output);
         }
     }
 
@@ -120,14 +144,20 @@ void remove_if_exists(string path)
 string readTextSafe(string path)
 {
     if (!exists(path))
-        return "(arquivo nao encontrado)";
+        return "(file not found)";
     return readText(path);
 }
 
-void main()
+int main()
 {
     string folder = "examples";
     ulong sucesso, erros, ignorados;
+
+    string llvmLinkFlag = detectLlvmLinkFlag();
+    if (llvmLinkFlag.length > 0)
+        writefln("=== Detected LLVM link flag: %s ===", llvmLinkFlag);
+    else
+        writeln("=== Warning: could not detect LLVM version via llvm-config; llvm*.cx tests may fail ===");
 
     DirEntry[] dir = dirEntries(folder, SpanMode.depth)
         .filter!(x => x.name.endsWith(".cx"))
@@ -138,28 +168,30 @@ void main()
     writeln("=== Cx ===");
     foreach (DirEntry key; dir)
     {
-        TestResult res = runTest(key.name);
+        TestResult res = runTest(key.name, llvmLinkFlag);
         if (res.ignored)
         {
-            writefln("  IGNORADO  %s", res.filename);
+            writefln("  IGNORED   %s", res.filename);
             ignorados++;
         }
         else if (res.ok)
         {
-            writefln("  SUCESSO   %s", res.filename);
+            writefln("  PASS      %s", res.filename);
             sucesso++;
         }
         else
         {
-            writefln("  ERRO      %s", res.filename);
+            writefln("  FAIL      %s", res.filename);
             writeln("            ", res.err);
             erros++;
         }
     }
 
     writeln();
-    writefln("SUCESSOS:  %d", sucesso);
-    writefln("ERROS:     %d", erros);
-    writefln("IGNORADOS: %d", ignorados);
-    writefln("TOTAL:     %d", sucesso + erros + ignorados);
+    writefln("PASSED:  %d", sucesso);
+    writefln("FAILED:  %d", erros);
+    writefln("IGNORED: %d", ignorados);
+    writefln("TOTAL:   %d", sucesso + erros + ignorados);
+
+    return erros ? 1 : 0;
 }

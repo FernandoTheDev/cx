@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: build + test (${{ matrix.distro }})
+    runs-on: self-hosted
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: fedora
+            image: fedora:latest
+          - distro: ubuntu
+            image: ubuntu:latest
+          - distro: arch
+            image: archlinux:latest
+
+    steps:
+      - name: Install git (needed before checkout on bare containers)
+        run: |
+          if command -v dnf >/dev/null 2>&1; then
+            dnf install -y git which
+          elif command -v apt-get >/dev/null 2>&1; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update
+            apt-get install -y git which
+          elif command -v pacman >/dev/null 2>&1; then
+            pacman -Sy --noconfirm git which
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ldc2, dub (Fedora)
+        if: matrix.distro == 'fedora'
+        run: dnf install -y ldc dub
+
+      - name: Install llvm-devel (Fedora)
+        if: matrix.distro == 'fedora'
+        run: dnf install -y llvm-devel
+
+      # Ubuntu não precisa mais bater com uma versão exata do LLVM: o
+      # tests/unit.d agora detecta a versão instalada em runtime via
+      # `llvm-config --version`. Basta ter *alguma* versão -dev instalada.
+      - name: Install ldc2, dub, gcc, llvm-dev (Ubuntu)
+        if: matrix.distro == 'ubuntu'
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ldc dub gcc llvm-21-dev
+
+      - name: Install ldc2, dub, llvm (Arch)
+        if: matrix.distro == 'arch'
+        run: pacman -Sy --noconfirm ldc dub llvm
+
+      - name: Verify dependencies
+        run: |
+          command -v ldc2
+          command -v dub
+          ldc2 --version
+          dub --version
+
+      - name: Ensure llvm-c and llvm headers are on the default system include path
+        run: |
+          # llvm-c/Core.h inclui internamente llvm/Config/llvm-config.h,
+          # que fica numa pasta IRMÃ (llvm/), não dentro de llvm-c/.
+          # No Ubuntu ambas ficam em /usr/lib/llvm-XX/include/{llvm-c,llvm}/
+          # (path versionado), então precisamos linkar as duas para o
+          # path padrão que o cc sem -I consegue achar: /usr/include.
+          ensure_link() {
+            name="$1"
+            marker="$2"
+            if [ -f "/usr/include/$name/$marker" ]; then
+              echo "$name already on default include path"
+              return 0
+            fi
+            FOUND_DIR=$(find / -type d -name "$name" -path "*include*" 2>/dev/null | grep -v '^/usr/include$' | head -n 1)
+            if [ -z "$FOUND_DIR" ]; then
+              echo "WARNING: $name headers not found anywhere on this system"
+              return 1
+            fi
+            echo "Found $name headers at: $FOUND_DIR"
+            ln -sfn "$FOUND_DIR" "/usr/include/$name"
+          }
+
+          ensure_link "llvm-c" "Core.h"
+          ensure_link "llvm" "Config/llvm-config.h"
+
+          test -f /usr/include/llvm-c/Core.h
+          test -f /usr/include/llvm/Config/llvm-config.h
+
+      - name: Ensure llvm-config is on PATH
+        run: |
+          if command -v llvm-config >/dev/null 2>&1; then
+            echo "llvm-config already on PATH: $(command -v llvm-config)"
+            exit 0
+          fi
+          # Procura apenas o binário executável (exclui headers .h, libs .so,
+          # man pages, etc). O nome costuma ser llvm-config ou llvm-config-<versão>,
+          # e o binário real vive em um diretório .../bin/.
+          FOUND=$(find / -type f -path "*/bin/llvm-config*" -perm -u+x 2>/dev/null | head -n 1)
+          if [ -z "$FOUND" ]; then
+            # fallback: qualquer arquivo executável cujo nome comece com llvm-config
+            FOUND=$(find / -type f -name "llvm-config*" -perm -u+x 2>/dev/null | grep -v '\.\(h\|so\|a\|txt\|1\)$' | head -n 1)
+          fi
+          if [ -z "$FOUND" ]; then
+            echo "llvm-config binary not found; tests/unit.d will fall back to no -L flag"
+            exit 0
+          fi
+          echo "Found llvm-config at: $FOUND"
+          ln -sf "$FOUND" /usr/local/bin/llvm-config
+          llvm-config --version
+
+      - name: Build + install cx (./build.sh)
+        run: |
+          chmod +x ./build.sh
+          ./build.sh
+
+      - name: Add ~/.local/bin to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify cx is installed and on PATH
+        run: |
+          which cx
+          cx --version
+
+      - name: Compile test suite with ldc2
+        run: ldc2 tests/unit.d -of=tests/unit_test
+
+      - name: Run test suite
+        run: ./tests/unit_test
+
+      - name: Clean up test artifacts
+        run: rm -f ./tests/unit_test ./tests/unit_test.o ./unit_test.o

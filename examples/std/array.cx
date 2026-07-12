@@ -1,0 +1,23 @@
+//# 67
+import std.io;
+import std.array;
+
+alias Value = int!ArrayError
+
+int main() {
+    Array<int> arr = Array<int>.new(1);
+    defer arr.free();
+    
+    arr.push(60);
+    arr.push(7);
+    Value e = arr.get(2);
+
+    if !e.valid {
+        printf("Error: %d\n", e.error);
+    }
+
+    Value v1 = arr.get(0);
+    Value v2 = arr.get(1);
+
+    return v1.ok + v2.ok;
+}

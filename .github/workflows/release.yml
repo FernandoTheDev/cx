@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build release artifact
+    runs-on: self-hosted
+    container:
+      image: ubuntu:latest
+
+    steps:
+      - name: Install git
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install ldc2 + dub + gcc + llvm-dev
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ldc dub zip gcc llvm-21-dev
+
+      - name: Ensure llvm-c and llvm headers are on the default system include path
+        run: |
+          # llvm-c/Core.h inclui internamente llvm/Config/llvm-config.h,
+          # que fica numa pasta IRMÃ (llvm/), não dentro de llvm-c/.
+          # Precisamos linkar as duas para o path padrão que o cc sem -I
+          # consegue achar: /usr/include.
+          ensure_link() {
+            name="$1"
+            marker="$2"
+            if [ -f "/usr/include/$name/$marker" ]; then
+              echo "$name already on default include path"
+              return 0
+            fi
+            FOUND_DIR=$(find / -type d -name "$name" -path "*include*" 2>/dev/null | grep -v '^/usr/include$' | head -n 1)
+            if [ -z "$FOUND_DIR" ]; then
+              echo "WARNING: $name headers not found anywhere on this system"
+              return 1
+            fi
+            echo "Found $name headers at: $FOUND_DIR"
+            ln -sfn "$FOUND_DIR" "/usr/include/$name"
+          }
+
+          ensure_link "llvm-c" "Core.h"
+          ensure_link "llvm" "Config/llvm-config.h"
+
+          test -f /usr/include/llvm-c/Core.h
+          test -f /usr/include/llvm/Config/llvm-config.h
+
+      - name: Ensure llvm-config is on PATH
+        run: |
+          if command -v llvm-config >/dev/null 2>&1; then
+            echo "llvm-config already on PATH: $(command -v llvm-config)"
+            exit 0
+          fi
+          # Procura apenas o binário executável (exclui headers .h, libs .so,
+          # man pages, etc). O nome costuma ser llvm-config ou llvm-config-<versão>,
+          # e o binário real vive em um diretório .../bin/.
+          FOUND=$(find / -type f -path "*/bin/llvm-config*" -perm -u+x 2>/dev/null | head -n 1)
+          if [ -z "$FOUND" ]; then
+            # fallback: qualquer arquivo executável cujo nome comece com llvm-config
+            FOUND=$(find / -type f -name "llvm-config*" -perm -u+x 2>/dev/null | grep -v '\.\(h\|so\|a\|txt\|1\)$' | head -n 1)
+          fi
+          if [ -z "$FOUND" ]; then
+            echo "llvm-config binary not found; tests/unit.d will fall back to no -L flag"
+            exit 0
+          fi
+          echo "Found llvm-config at: $FOUND"
+          ln -sf "$FOUND" /usr/local/bin/llvm-config
+          llvm-config --version
+
+      - name: Build release binary
+        run: |
+          chmod +x ./build.sh
+          ./build.sh build
+
+      - name: Verify binary
+        run: |
+          ./cx --version
+
+      - name: Run test suite before packaging
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp ./cx "$HOME/.local/bin/cx"
+          chmod +x "$HOME/.local/bin/cx"
+          export PATH="$HOME/.local/bin:$PATH"
+          mkdir -p "$HOME/.cx"
+          cp -r ./std "$HOME/.cx/std"
+          ldc2 tests/unit.d -of=tests/unit_test
+          ./tests/unit_test
+
+      - name: Clean up test binary
+        run: rm -f ./tests/unit_test ./tests/unit_test.o ./unit_test.o
+
+      - name: Assemble release folder
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          RELEASE_DIR="cx-${TAG}"
+          mkdir -p "$RELEASE_DIR"
+
+          # Copy the whole repo (as if from git clone), excluding .git and CI-only junk
+          git archive --format=tar HEAD | tar -x -C "$RELEASE_DIR"
+
+          # Overwrite/ensure the freshly built binary is present and executable
+          cp ./cx "$RELEASE_DIR/cx"
+          chmod +x "$RELEASE_DIR/cx"
+
+          zip -r "${RELEASE_DIR}.zip" "$RELEASE_DIR"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cx-*.zip
+          generate_release_notes: true

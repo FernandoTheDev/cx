@@ -1,0 +1,39 @@
+import std.lib;
+
+enum ArrayError {
+    NotFound,
+}
+
+struct Array<T> {
+    T* data;
+    uint size;
+    uint cap;
+
+    static Array<T> new(uint cap)
+    {
+        return (Array<T>) {calloc(cap, sizeof(T)), 0, cap};
+    }
+
+    void push(T val)
+    {
+        if self.size >= self.cap 
+        {
+            uint newCap = self.cap * 2;
+            self.data = realloc(self.data, newCap * sizeof(T));
+            self.cap = newCap;
+        }
+        self.data[self.size++] = val;
+    }
+
+    T!ArrayError get(uint offset)
+    {
+        if offset >= self.size
+            return ArrayError.NotFound;
+        return self.data[offset];
+    }
+
+    void free()
+    {
+        free(self.data);
+    }
+}
