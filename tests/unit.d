@@ -45,10 +45,10 @@ struct TestResult
     bool ignored;
 }
 
-// Descobre a major version do LLVM instalado no sistema, na ordem:
-// 1) variável de ambiente LLVM_LINK_VERSION (override manual, útil em CI)
+// Detects the major LLVM version installed on the system, in order:
+// 1) LLVM_LINK_VERSION environment variable (manual override, useful in CI)
 // 2) `llvm-config --version`
-// 3) fallback vazio (nenhuma flag -L é passada, deixa o cx/gcc resolverem sozinhos)
+// 3) empty fallback (no -L flag passed, let cx/gcc resolve it on their own)
 string detectLlvmLinkFlag()
 {
     string envOverride = environment.get("LLVM_LINK_VERSION", "");
@@ -100,12 +100,12 @@ TestResult runTest(string filename, string llvmLinkFlag)
     if (cxComp.status != 0)
     {
         res.ok  = false;
-        res.err = "Falha no compilador Cx:\n" ~ cxComp.output;
+        res.err = "Cx compiler failed:\n" ~ cxComp.output;
         remove_if_exists(cFile);
         return res;
     }
 
-    // 2) roda o binário
+    // 2) run the binary
     Exec run = executeShell(format("./%s", binFile));
     int code = run.status;
     string output = run.output;
@@ -118,7 +118,7 @@ TestResult runTest(string filename, string llvmLinkFlag)
         if (expected != code)
         {
             res.ok  = false;
-            res.err = format("Código esperado '%d', recebido '%d'.", expected, code);
+            res.err = format("Expected exit code '%d', got '%d'.", expected, code);
         }
     }
     else if (fromOutput)
@@ -127,7 +127,7 @@ TestResult runTest(string filename, string llvmLinkFlag)
         if (output != expected)
         {
             res.ok  = false;
-            res.err = format("Saída esperada '%s', recebida '%s'.", expected, output);
+            res.err = format("Expected output '%s', got '%s'.", expected, output);
         }
     }
 
@@ -144,7 +144,7 @@ void remove_if_exists(string path)
 string readTextSafe(string path)
 {
     if (!exists(path))
-        return "(arquivo nao encontrado)";
+        return "(file not found)";
     return readText(path);
 }
 
@@ -155,9 +155,9 @@ int main()
 
     string llvmLinkFlag = detectLlvmLinkFlag();
     if (llvmLinkFlag.length > 0)
-        writefln("=== LLVM link flag detectada: %s ===", llvmLinkFlag);
+        writefln("=== Detected LLVM link flag: %s ===", llvmLinkFlag);
     else
-        writeln("=== Aviso: não foi possível detectar versão do LLVM via llvm-config; testes llvm*.cx podem falhar ===");
+        writeln("=== Warning: could not detect LLVM version via llvm-config; llvm*.cx tests may fail ===");
 
     DirEntry[] dir = dirEntries(folder, SpanMode.depth)
         .filter!(x => x.name.endsWith(".cx"))
@@ -171,27 +171,27 @@ int main()
         TestResult res = runTest(key.name, llvmLinkFlag);
         if (res.ignored)
         {
-            writefln("  IGNORADO  %s", res.filename);
+            writefln("  IGNORED   %s", res.filename);
             ignorados++;
         }
         else if (res.ok)
         {
-            writefln("  SUCESSO   %s", res.filename);
+            writefln("  PASS      %s", res.filename);
             sucesso++;
         }
         else
         {
-            writefln("  ERRO      %s", res.filename);
+            writefln("  FAIL      %s", res.filename);
             writeln("            ", res.err);
             erros++;
         }
     }
 
     writeln();
-    writefln("SUCESSOS:  %d", sucesso);
-    writefln("ERROS:     %d", erros);
-    writefln("IGNORADOS: %d", ignorados);
-    writefln("TOTAL:     %d", sucesso + erros + ignorados);
+    writefln("PASSED:  %d", sucesso);
+    writefln("FAILED:  %d", erros);
+    writefln("IGNORED: %d", ignorados);
+    writefln("TOTAL:   %d", sucesso + erros + ignorados);
 
     return erros ? 1 : 0;
 }

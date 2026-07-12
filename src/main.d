@@ -49,6 +49,7 @@ void showHelp()
 	writeln("  CC                    C compiler used to build the output (default: cc)");
 	writeln();
 	writeln("Examples:");
+	writeln("  cx update");
 	writeln("  cx main.cx");
 	writeln("  cx main.cx --opt -o main");
 	writeln("  cx main.cx --cflags=\"--O2 -o main\"");
@@ -103,6 +104,12 @@ int main(string[] argv)
 				"If it does not exist, then an error occurred while installing the compiler on your system.");
 			return 0;
 		}
+	}
+
+	if (argv.length > 1 && argv[1] == "update")
+	{
+		import updater;
+		return runUpdate();
 	}
 
 	bool emitc, opt, dbg, verMessage, helpMessage, genHeader;
