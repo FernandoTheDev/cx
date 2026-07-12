@@ -52,13 +52,20 @@ jobs:
             echo "llvm-config already on PATH: $(command -v llvm-config)"
             exit 0
           fi
-          FOUND=$(find / -type f -name "llvm-config*" 2>/dev/null | grep -v '\.so' | head -n 1)
+          # Procura apenas o binário executável (exclui headers .h, libs .so,
+          # man pages, etc). O nome costuma ser llvm-config ou llvm-config-<versão>,
+          # e o binário real vive em um diretório .../bin/.
+          FOUND=$(find / -type f -path "*/bin/llvm-config*" -perm -u+x 2>/dev/null | head -n 1)
           if [ -z "$FOUND" ]; then
-            echo "llvm-config not found; tests/unit.d will fall back to no -L flag"
+            # fallback: qualquer arquivo executável cujo nome comece com llvm-config
+            FOUND=$(find / -type f -name "llvm-config*" -perm -u+x 2>/dev/null | grep -v '\.\(h\|so\|a\|txt\|1\)$' | head -n 1)
+          fi
+          if [ -z "$FOUND" ]; then
+            echo "llvm-config binary not found; tests/unit.d will fall back to no -L flag"
             exit 0
           fi
           echo "Found llvm-config at: $FOUND"
-          ln -s "$FOUND" /usr/local/bin/llvm-config
+          ln -sf "$FOUND" /usr/local/bin/llvm-config
           llvm-config --version
 
       - name: Build release binary
