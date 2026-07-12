@@ -66,10 +66,20 @@ jobs:
           ldc2 --version
           dub --version
 
-      - name: Verify llvm-c/Core.h is available
+      - name: Ensure llvm-c headers are on the default system include path
         run: |
-          find / -name "Core.h" -path "*llvm-c*" 2>/dev/null | head -n 1 | grep -q . \
-            || { echo "llvm-c/Core.h not found on this system"; exit 1; }
+          if [ -f /usr/include/llvm-c/Core.h ]; then
+            echo "llvm-c/Core.h already on default include path"
+            exit 0
+          fi
+          FOUND_DIR=$(find / -type d -name "llvm-c" -path "*include*" 2>/dev/null | head -n 1)
+          if [ -z "$FOUND_DIR" ]; then
+            echo "llvm-c headers not found anywhere on this system"
+            exit 1
+          fi
+          echo "Found llvm-c headers at: $FOUND_DIR"
+          ln -s "$FOUND_DIR" /usr/include/llvm-c
+          test -f /usr/include/llvm-c/Core.h
 
       - name: Build + install cx (./build.sh)
         run: |
