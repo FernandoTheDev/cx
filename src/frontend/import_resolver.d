@@ -14,7 +14,7 @@ struct ImportResolverContext
 {
     string cxdir;
     string[string] mods; // módulos resolvidos
-    Position[string] symbols; // simbolos globais
+    Node[string] symbols; // simbolos globais
     bool[string] statics;
 }
 

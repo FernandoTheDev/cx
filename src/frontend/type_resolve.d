@@ -145,8 +145,10 @@ private:
             return lt2;
 
         case NodeKind.CastExpr:
-            resolveExprType((cast(CastExpr) n).expr, scp);
-            return n.type_expr; // já veio do parser
+            CastExpr c = (cast(CastExpr) n);
+            resolveExprType(c.expr, scp);
+            if (c.expr.type_expr is null) c.expr.type_expr = c.type_expr;
+            return c.type_expr; // já veio do parser
 
         case NodeKind.StructLit:
             foreach (v; (cast(StructLit) n).values)
@@ -283,7 +285,10 @@ private:
         case NodeKind.VarDecl:
             VarDecl v = cast(VarDecl) n;
             if (v.val !is null)
+            {
                 resolveExprType(v.val, scp);
+                if (v.val.type_expr is null) v.val.type_expr = v.type_expr;
+            }
             scp.declare(v.name, v.type_expr);
             return;
 

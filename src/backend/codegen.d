@@ -390,14 +390,64 @@ private:
 
         case NodeKind.StructLit:
             StructLit strc = cast(StructLit) node;
-            string values;
+            bool haveComptimeArray;
+            string[] values;
+            
             for (ulong i; i < strc.values.length; i++)
             {
-                values ~= compileExpr(strc.values[i]);
-                if ((i + 1) < strc.values.length)
-                    values ~= ", ";
+                Node n = strc.values[i];
+                if (n.type_expr !is null && n.type_expr.kind == TypeExprKind.Array)
+                    haveComptimeArray = true;
+                values ~= compileExpr(n);
             }
-            return format("{%s}", values);
+
+            TypeExpr type = strc.type_expr is null ? null : strc.type_expr;
+            string def = format("{%s}", values.join(", "));
+
+            if (!haveComptimeArray)
+                return def;
+
+            if (haveComptimeArray && type is null)
+                return def;
+            
+            StructDecl decl = cast(StructDecl) context.symbols[type.toString()];
+            
+            if (decl is null)
+                return def;
+
+            string temp = format("temp_%d", tmp++);
+            emit(format("%s;", type.toStrVar(temp)), 4);
+
+            foreach (size_t i, VarDecl field; decl.fields)
+            {
+                string member = format("%s.%s", temp, field.name);
+                if (field.type_expr !is null && field.type_expr.kind != TypeExprKind.Array)
+                    emit(format("%s = %s;", member, values[i]), 4);
+                else {
+                    // writeln("COMPTIME");
+                    string value;
+                    if (
+                        strc.values[i].kind == NodeKind.IdentExpr
+                        || strc.values[i].kind == NodeKind.MemberExpr
+                        || strc.values[i].kind == NodeKind.IndexExpr
+                    )
+                        value = values[i];
+                    else {
+                        // cria uma variavel temporaria
+                        string tempField = format("temp_%d", tmp++);
+                        emit(format("%s = %s;", field.type_expr.toStrVar(tempField), values[i]), 4);
+                        value = tempField;
+                    }
+                    emit(format("memcpy(%s, %s, sizeof(%s));", member, value, member), 4);
+                    // memcpy(temp_0.bar, name, sizeof(temp_0.bar));
+                    // writeln(field.name);
+                    // writeln(field.type_expr);
+                }
+            }
+
+            // writeln(decl.fields);
+            // writeln(haveComptimeArray, " ", values);
+            return format("%s", temp);
 
         case NodeKind.ArrayLit:
             ArrayLit arr = cast(ArrayLit) node;

@@ -149,13 +149,7 @@ struct Lexer {
             if name === "print" {
                 return (Tok) {TokKind.Print, 0, ""};
             }
-            // TODO: fix that
-            Tok tmp_0;
-            tmp_0.kind = TokKind_Ident;
-            tmp_0.num = 0;
-            strcpy(tmp_0.name, name); // ou memcpy se não for char[]
-            return tmp_0;
-            // return (Tok) {TokKind.Ident, 0, name}; // TODO: fix
+            return (Tok) {TokKind.Ident, 0, name};
         }
         if c == '+' {
             self.pos = self.pos + 1;
