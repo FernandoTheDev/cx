@@ -28,6 +28,10 @@ string escape(string str)
                     buffer ~= '\n';
                     offset++;
                     continue;
+                case '\\':
+                    buffer ~= '\\';
+                    offset++;
+                    continue;
                 default:
                     break;
             }

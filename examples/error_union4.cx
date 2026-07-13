@@ -1,0 +1,27 @@
+//# 0
+include <stdio.h>
+
+enum Error {
+    SixSeven
+}
+
+alias E = int!Error
+
+struct Seven {
+    E bar() {
+        return Error.SixSeven;
+    }
+    
+    E foo() {
+        if true
+            return 0;
+        return self.bar(); // It was throwing an error
+    }
+}
+
+
+int main() {
+    Seven s = {};
+    s.foo();
+    return 0;
+}

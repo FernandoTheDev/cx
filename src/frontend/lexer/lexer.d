@@ -302,6 +302,46 @@ private:
             buffer ~= [advance()];
     }
 
+    string lexString(uint start_o, uint start_l)
+    {
+        String buffer;
+        buffer.reserve(32);
+        
+        while (!isAtEnd() && !check('"'))
+        {
+            checkNewLine(peek());
+            buffer ~= [advance()];
+        }
+        
+        if (!match('"'))
+        {
+            err.error(getPos(start_o, start_l), "The string was not closed.");
+            return "/* err */";
+        }
+
+        /*
+        "Str1"
+        "Str2" "Str3"
+        */
+
+        while (!isAtEnd())
+        {
+            if (peek() == ' ' || peek() == '\r' || peek() == '\t' || checkNewLine(peek()))
+            {
+                advance();
+                continue;
+            }
+            break;
+        }
+
+        string str = buffer.data;
+
+        if (match('"'))
+            return str ~= lexString(loffset, line);
+
+        return str;
+    }
+
 public:
     this(string filename, string dir, string source, Diagnostics err, TypeRegistry t)
     {
@@ -481,22 +521,7 @@ public:
             {
                 uint start_o = loffset;
                 uint start_l = line;
-                String buffer;
-                buffer.reserve(32);
-
-                while (!isAtEnd() && !check('"'))
-                {
-                    checkNewLine(peek());
-                    buffer ~= [advance()];
-                }
-
-                if (!match('"'))
-                {
-                    err.error(getPos(start_o, start_l), "The string was not closed.");
-                    continue;
-                }
-
-                pushToken(Token.tk_string(TokenKind.String, buffer.data, getPos(start_o, start_l)));
+                pushToken(Token.tk_string(TokenKind.String, lexString(start_o, start_l), getPos(start_o, start_l)));
                 continue;
             }
 

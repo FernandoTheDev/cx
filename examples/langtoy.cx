@@ -1,0 +1,496 @@
+//# 0
+include <stdio.h>
+include <stdlib.h>
+include <string.h>
+
+enum LangError {
+    UnexpectedChar,
+    UnexpectedToken,
+    DivisionByZero,
+    UnclosedParen,
+    UndefinedVar,
+    ExpectedIdent,
+    ExpectedEquals,
+    ExpectedSemicolon,
+    TooManyVars
+}
+
+enum TokKind {
+    Num,
+    Ident,
+    Let,
+    Print,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Equals,
+    Semicolon,
+    LParen,
+    RParen,
+    Eof
+}
+
+struct Tok {
+    TokKind kind;
+    double num;
+    char[16] name;
+}
+
+struct Env {
+    char[16][32] names;
+    double[32] values;
+    u32 count;
+
+    static Env new() {
+        Env e;
+        e.count = 0;
+        return e;
+    }
+
+    void set(char* name, double val) {
+        for (u32 i = 0; i < self.count; i++) {
+            if self.names[i] === name {
+                self.values[i] = val;
+                return;
+            }
+        }
+        strcpy(self.names[self.count], name);
+        self.values[self.count] = val;
+        self.count = self.count + 1;
+    }
+
+    double!LangError get(char* name) {
+        for (u32 i = 0; i < self.count; i++) {
+            if self.names[i] === name {
+                return self.values[i];
+            }
+        }
+        return LangError.UndefinedVar;
+    }
+}
+
+struct Lexer {
+    char* src;
+    u32 pos;
+    u32 len;
+
+    static Lexer new(char* src) {
+        return (Lexer) {src, 0, src.length};
+    }
+
+    char current() {
+        if self.pos >= self.len {
+            return '\0';
+        }
+        return self.src[self.pos];
+    }
+
+    void skipSpaces() {
+        while self.current() == ' ' || self.current() == '\n' || self.current() == '\t' {
+            self.pos = self.pos + 1;
+        }
+    }
+
+    bool isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    bool isAlpha(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
+    double nextNumber() {
+        u32 start = self.pos;
+        while self.isDigit(self.current()) {
+            self.pos = self.pos + 1;
+        }
+        if self.current() == '.' {
+            self.pos = self.pos + 1;
+            while self.isDigit(self.current()) {
+                self.pos = self.pos + 1;
+            }
+        }
+        u32 len = self.pos - start;
+        char[32] buff;
+        for (u32 i = 0; i < len; i++) {
+            buff[i] = self.src[start + i];
+        }
+        buff[len] = '\0';
+        return atof(buff);
+    }
+
+    Tok!LangError next() {
+        self.skipSpaces();
+        char c = self.current();
+
+        if c == '\0' {
+            return (Tok) {TokKind.Eof, 0, ""};
+        }
+        if self.isDigit(c) {
+            double n = self.nextNumber();
+            return (Tok) {TokKind.Num, n, ""};
+        }
+        if self.isAlpha(c) {
+            u32 start = self.pos;
+            while self.isAlpha(self.current()) || self.isDigit(self.current()) {
+                self.pos = self.pos + 1;
+            }
+            u32 len = self.pos - start;
+            char[16] name;
+            for (u32 i = 0; i < len; i++) {
+                name[i] = self.src[start + i];
+            }
+            name[len] = '\0';
+
+            if name === "let" {
+                return (Tok) {TokKind.Let, 0, ""};
+            }
+            if name === "print" {
+                return (Tok) {TokKind.Print, 0, ""};
+            }
+            // TODO: fix that
+            Tok tmp_0;
+            tmp_0.kind = TokKind_Ident;
+            tmp_0.num = 0;
+            strcpy(tmp_0.name, name); // ou memcpy se não for char[]
+            return tmp_0;
+            // return (Tok) {TokKind.Ident, 0, name}; // TODO: fix
+        }
+        if c == '+' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Plus, 0, ""};
+        }
+        if c == '-' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Minus, 0, ""};
+        }
+        if c == '*' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Star, 0, ""};
+        }
+        if c == '/' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Slash, 0, ""};
+        }
+        if c == '=' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Equals, 0, ""};
+        }
+        if c == ';' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Semicolon, 0, ""};
+        }
+        if c == '(' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.LParen, 0, ""};
+        }
+        if c == ')' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.RParen, 0, ""};
+        }
+
+        return LangError.UnexpectedChar;
+    }
+}
+
+// ---- Interpretador: parser + execucao, tudo direto (tree-walking) ----
+struct Interp {
+    Lexer lex;
+    Tok tok;
+    Env env;
+
+    static Interp!LangError new(char* src) {
+        Lexer l = Lexer.new(src);
+        Tok!LangError first = l.next();
+        if !first.valid {
+            return first.error;
+        }
+        return (Interp) {l, first.ok, Env.new()};
+    }
+
+    double!LangError advance() {
+        Tok!LangError t = self.lex.next();
+        if !t.valid {
+            return t.error;
+        }
+        self.tok = t.ok;
+        return 0;
+    }
+
+    double!LangError factor() {
+        if self.tok.kind == TokKind.Num {
+            double val = self.tok.num;
+            double!LangError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            return val;
+        }
+        if self.tok.kind == TokKind.Ident {
+            char[16] name;
+            strcpy(name, self.tok.name);
+            double!LangError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            return self.env.get(name);
+        }
+        if self.tok.kind == TokKind.Minus {
+            double!LangError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!LangError inner = self.factor();
+            if !inner.valid {
+                return inner.error;
+            }
+            return -inner.ok;
+        }
+        if self.tok.kind == TokKind.LParen {
+            double!LangError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!LangError inner = self.expr();
+            if !inner.valid {
+                return inner.error;
+            }
+            if self.tok.kind != TokKind.RParen {
+                return LangError.UnclosedParen;
+            }
+            double!LangError adv2 = self.advance();
+            if !adv2.valid {
+                return adv2.error;
+            }
+            return inner.ok;
+        }
+        return LangError.UnexpectedToken;
+    }
+
+    double!LangError term() {
+        double!LangError left = self.factor();
+        if !left.valid {
+            return left.error;
+        }
+        double acc = left.ok;
+        while self.tok.kind == TokKind.Star || self.tok.kind == TokKind.Slash {
+            TokKind op = self.tok.kind;
+            double!LangError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!LangError right = self.factor();
+            if !right.valid {
+                return right.error;
+            }
+            if op == TokKind.Star {
+                acc = acc * right.ok;
+            } else {
+                if right.ok == 0.0 {
+                    return LangError.DivisionByZero;
+                }
+                acc = acc / right.ok;
+            }
+        }
+        return acc;
+    }
+
+    double!LangError expr() {
+        double!LangError left = self.term();
+        if !left.valid {
+            return left.error;
+        }
+        double acc = left.ok;
+        while self.tok.kind == TokKind.Plus || self.tok.kind == TokKind.Minus {
+            TokKind op = self.tok.kind;
+            double!LangError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!LangError right = self.term();
+            if !right.valid {
+                return right.error;
+            }
+            if op == TokKind.Plus {
+                acc = acc + right.ok;
+            } else {
+                acc = acc - right.ok;
+            }
+        }
+        return acc;
+    }
+
+    // let IDENT = expr ;
+    double!LangError letStmt() {
+        double!LangError adv = self.advance(); // consome 'let'
+        if !adv.valid {
+            return adv.error;
+        }
+        if self.tok.kind != TokKind.Ident {
+            return LangError.ExpectedIdent;
+        }
+        char[16] name;
+        strcpy(name, self.tok.name);
+
+        double!LangError adv2 = self.advance(); // consome IDENT
+        if !adv2.valid {
+            return adv2.error;
+        }
+        if self.tok.kind != TokKind.Equals {
+            return LangError.ExpectedEquals;
+        }
+        double!LangError adv3 = self.advance(); // consome '='
+        if !adv3.valid {
+            return adv3.error;
+        }
+        double!LangError val = self.expr();
+        if !val.valid {
+            return val.error;
+        }
+        if self.tok.kind != TokKind.Semicolon {
+            return LangError.ExpectedSemicolon;
+        }
+        double!LangError adv4 = self.advance(); // consome ';'
+        if !adv4.valid {
+            return adv4.error;
+        }
+        self.env.set(name, val.ok);
+        return 0;
+    }
+
+    // IDENT = expr ;
+    double!LangError assignStmt() {
+        char[16] name;
+        strcpy(name, self.tok.name);
+
+        double!LangError adv = self.advance(); // consome IDENT
+        if !adv.valid {
+            return adv.error;
+        }
+        if self.tok.kind != TokKind.Equals {
+            return LangError.ExpectedEquals;
+        }
+        double!LangError adv2 = self.advance(); // consome '='
+        if !adv2.valid {
+            return adv2.error;
+        }
+        double!LangError val = self.expr();
+        if !val.valid {
+            return val.error;
+        }
+        if self.tok.kind != TokKind.Semicolon {
+            return LangError.ExpectedSemicolon;
+        }
+        double!LangError adv3 = self.advance(); // consome ';'
+        if !adv3.valid {
+            return adv3.error;
+        }
+        self.env.set(name, val.ok);
+        return 0;
+    }
+
+    // print expr ;
+    double!LangError printStmt() {
+        double!LangError adv = self.advance(); // consome 'print'
+        if !adv.valid {
+            return adv.error;
+        }
+        double!LangError val = self.expr();
+        if !val.valid {
+            return val.error;
+        }
+        if self.tok.kind != TokKind.Semicolon {
+            return LangError.ExpectedSemicolon;
+        }
+        double!LangError adv2 = self.advance(); // consome ';'
+        if !adv2.valid {
+            return adv2.error;
+        }
+        printf("%g\n", val.ok);
+        return 0;
+    }
+
+    double!LangError statement() {
+        if self.tok.kind == TokKind.Let {
+            return self.letStmt();
+        }
+        if self.tok.kind == TokKind.Print {
+            return self.printStmt();
+        }
+        if self.tok.kind == TokKind.Ident {
+            return self.assignStmt();
+        }
+        return LangError.UnexpectedToken;
+    }
+
+    double!LangError run() {
+        while self.tok.kind != TokKind.Eof {
+            double!LangError r = self.statement();
+            if !r.valid {
+                return r.error;
+            }
+        }
+        return 0;
+    }
+}
+
+char* errorToStr(LangError e) {
+    if e == LangError.UnexpectedChar return "unexpected character";
+    if e == LangError.UnexpectedToken return "unexpected token";
+    if e == LangError.DivisionByZero return "division by zero";
+    if e == LangError.UnclosedParen return "unclosed parenthesis";
+    if e == LangError.UndefinedVar return "undefined variable";
+    if e == LangError.ExpectedIdent return "expected identifier";
+    if e == LangError.ExpectedEquals return "expected '='";
+    if e == LangError.ExpectedSemicolon return "expected ';'";
+    if e == LangError.TooManyVars return "too many variables";
+    return "unknown error";
+}
+
+void execute(char* src) {
+    Interp!LangError i = Interp.new(src);
+    if !i.valid {
+        printf("Error: %s\n", errorToStr(i.error));
+        return;
+    }
+    Interp interp = i.ok;
+    double!LangError r = interp.run();
+    if !r.valid {
+        printf("Error: %s\n", errorToStr(r.error));
+    }
+}
+
+int main() {
+    printf("--- program 1 ---\n");
+    execute(
+        "let x = 10;"
+        "let y = 20;"
+        "print x + y;"
+        "x = x * 2;"
+        "print x;"
+        "print x - y;"
+    );
+
+    printf("--- program 2 (fibonacci manual) ---\n");
+    execute(
+        "let a = 0;"
+        "let b = 1;"
+        "print a;"
+        "print b;"
+        "let c = a + b;"
+        "print c;"
+        "a = b;"
+        "b = c;"
+        "c = a + b;"
+        "print c;"
+    );
+
+    printf("--- program 3 (erro: variavel indefinida) ---\n");
+    execute("print z;");
+
+    printf("--- program 4 (erro: divisao por zero) ---\n");
+    execute("let x = 10; print x / 0;");
+
+    return 0;
+}

@@ -1,6 +1,8 @@
 module frontend.type_resolve;
 
 import frontend;
+
+import std.format;
 import std.stdio;
 
 final class Scope
@@ -192,6 +194,9 @@ private:
                 methodName = (cast(IdentExpr) call.callee).val;
 
             FnDecl fn = findMethod(sName, methodName);
+            if (fn is null)
+                // fallback
+                fn = findMethod(sName, format("%s_%s", sName, methodName));
             TypeExpr ret = fn !is null ? fn.type_expr : m.left.type_expr;
             // writeln("Name: ", sName, " ", methodName, " ", fn, " ", ret);
 

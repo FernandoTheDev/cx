@@ -176,7 +176,7 @@ private:
             return compileVarDecl(as!VarDecl(node), ind);
 
         case NodeKind.ReturnStmt:
-            return compileRetDecl(as!ReturnStmt(node), ind);
+            return compileRetStmt(as!ReturnStmt(node), ind);
 
         case NodeKind.CallExpr:
             return compileCallStmt(as!CallExpr(node), ind);
@@ -307,6 +307,32 @@ private:
         }
     }
 
+    string escapeChar(char c)
+    {
+        switch (c)
+        {
+        case '\0': return "\\0";
+        case '\n': return "\\n";
+        case '\t': return "\\t";
+        case '\r': return "\\r";
+        case '\'': return "\\'";
+        case '\\': return "\\\\";
+        case '\a': return "\\a";
+        case '\b': return "\\b";
+        case '\f': return "\\f";
+        case '\v': return "\\v";
+        default:
+            return format("%c", c);
+        }
+    }
+
+    string escapeString(string s)
+    {
+        string buff;
+        foreach (c; s) buff ~= escapeChar(c);
+        return buff;
+    }
+
     string compileExpr(Node node)
     {
         switch (node.kind)
@@ -327,8 +353,7 @@ private:
             BinaryExpr binary = cast(BinaryExpr) node;
             string left = compileExpr(binary.left);
             string right = compileExpr(binary.right);
-            if (isString(binary.left.type_expr) && isString(binary.right.type_expr) && binary.op == TokenKind
-                .EEEquals)
+            if (isString(binary.left.type_expr) && isString(binary.right.type_expr) && binary.op == TokenKind.EEEquals)
                 return format("strcmp(%s, %s) == 0", left, right);
             return format("%s %s %s", left, getOp(binary.op), right);
 
@@ -339,10 +364,10 @@ private:
             return format("%s%s", un.post ? val : op, un.post ? op : val);
 
         case NodeKind.StringLit:
-            return '"' ~ (cast(StringLit) node).val ~ '"';
+            return format("\"%s\"", (cast(StringLit) node).val);
 
         case NodeKind.CharLit:
-            return "'" ~ (cast(CharLit) node).val ~ "'";
+            return format("'%s'", escapeChar((cast(CharLit) node).val));
 
         case NodeKind.NullLit:
             return "NULL";
@@ -473,8 +498,20 @@ private:
                 id = (cast(IdentExpr) node.left).val;
             else if (MemberExpr m = cast(MemberExpr) node.left)
             {
-                id = format("tmp_%d", tmp++);
-                emit(format("%s %s = %s;", m.right.type_expr, id, compileMemberExpr(m)), 4);
+                // LValue?
+                string member = compileMemberExpr(m);
+                if ((
+                    m.left.kind == NodeKind.IdentExpr 
+                    || m.left.kind == NodeKind.IndexExpr
+                    || m.left.kind == NodeKind.MemberExpr)
+                    && member[$-1] != ')'
+                )
+                    id = member;
+                else
+                {
+                    id = format("tmp_%d", tmp++);
+                    emit(format("%s %s = %s;", m.right.type_expr, id, member), 4);
+                }
             }
             if (id != "")
             {
@@ -549,7 +586,7 @@ private:
         return indent(format("%s;", compileCallExpr(node)), ind);
     }
 
-    string compileRetDecl(ReturnStmt node, uint ind)
+    string compileRetStmt(ReturnStmt node, uint ind)
     {
         deferResolve(ind);
         string val = node.val is null ? "" : compileExpr(node.val);
@@ -561,7 +598,11 @@ private:
                 return "return 0;";
             }
             // writeln(node.val);
+            // writeln(node.val.pos.toString());
             // writeln(node.val.type_expr);
+            if (node.val.type_expr !is null)
+                if (node.val.type_expr.toString() == fnUnion)
+                    return indent(format("return %s;", val), ind);
             // writeln(fnError[0]);
             // writeln(fnError[1], "\n");
             bool ok;
@@ -699,10 +740,12 @@ private:
 
     bool isString(TypeExpr type)
     {
+        TypeExprNamed t;
         if (TypeExprPointer p = cast(TypeExprPointer) type)
-            if (TypeExprNamed t = cast(TypeExprNamed) p.base)
-                return t.name == "char";
-        return false;
+            t = cast(TypeExprNamed) p.base;
+        else if (TypeExprArray a = cast(TypeExprArray) type)
+            t = cast(TypeExprNamed) a.base;
+        return t is null ? false : t.name == "char";
     }
 
     bool isResult(TypeExpr type)

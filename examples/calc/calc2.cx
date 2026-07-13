@@ -1,0 +1,290 @@
+//# 0
+include <stdio.h>
+include <stdlib.h>
+include <string.h>
+
+enum EvalError {
+    UnexpectedChar,
+    UnexpectedToken,
+    DivisionByZero,
+    UnclosedParen,
+    EmptyExpression
+}
+
+enum TokKind {
+    Num,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    LParen,
+    RParen,
+    Eof
+}
+
+struct Tok {
+    TokKind kind;
+    double num;
+}
+
+struct Lexer {
+    char* src;
+    u32 pos;
+    u32 len;
+
+    static Lexer new(char* src) {
+        return (Lexer) {src, 0, src.length};
+    }
+
+    char current() {
+        if self.pos >= self.len {
+            return '\0';
+        }
+        return self.src[self.pos];
+    }
+
+    void skipSpaces() {
+        while self.current() == ' ' {
+            self.pos = self.pos + 1;
+        }
+    }
+
+    bool isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    double!EvalError nextNumber() {
+        u32 start = self.pos;
+        while self.isDigit(self.current()) {
+            self.pos = self.pos + 1;
+        }
+        if self.current() == '.' {
+            self.pos = self.pos + 1;
+            while self.isDigit(self.current()) {
+                self.pos = self.pos + 1;
+            }
+        }
+        u32 len = self.pos - start;
+        char[32] buff;
+        for (u32 i = 0; i < len; i++) {
+            buff[i] = self.src[start + i];
+        }
+        buff[len] = '\0';
+        return atof(buff);
+    }
+
+    Tok!EvalError next() {
+        self.skipSpaces();
+        char c = self.current();
+
+        if c == '\0' {
+            return (Tok) {TokKind.Eof, 0};
+        }
+        if self.isDigit(c) {
+            double!EvalError n = self.nextNumber();
+            if !n.valid {
+                return n.error;
+            }
+            return (Tok) {TokKind.Num, n.ok};
+        }
+        if c == '+' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Plus, 0};
+        }
+        if c == '-' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Minus, 0};
+        }
+        if c == '*' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Star, 0};
+        }
+        if c == '/' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.Slash, 0};
+        }
+        if c == '(' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.LParen, 0};
+        }
+        if c == ')' {
+            self.pos = self.pos + 1;
+            return (Tok) {TokKind.RParen, 0};
+        }
+
+        return EvalError.UnexpectedChar;
+    }
+}
+
+// gramatica:
+//   expr   := term (("+" | "-") term)*
+//   term   := factor (("*" | "/") factor)*
+//   factor := NUM | "(" expr ")" | "-" factor
+struct Parser {
+    Lexer lex;
+    Tok tok;
+
+    static Parser!EvalError new(char* src) {
+        Lexer l = Lexer.new(src);
+        Tok!EvalError first = l.next();
+        if !first.valid {
+            return first.error;
+        }
+        return (Parser) {l, first.ok};
+    }
+
+    double!EvalError advance() {
+        Tok!EvalError t = self.lex.next();
+        if !t.valid {
+            return t.error;
+        }
+        self.tok = t.ok;
+        return 0;
+    }
+
+    double!EvalError factor() {
+        if self.tok.kind == TokKind.Num {
+            double val = self.tok.num;
+            double!EvalError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            return val;
+        }
+
+        if self.tok.kind == TokKind.Minus {
+            double!EvalError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!EvalError inner = self.factor();
+            if !inner.valid {
+                return inner.error;
+            }
+            return -inner.ok;
+        }
+
+        if self.tok.kind == TokKind.LParen {
+            double!EvalError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!EvalError inner = self.expr();
+            if !inner.valid {
+                return inner.error;
+            }
+            if self.tok.kind != TokKind.RParen {
+                return EvalError.UnclosedParen;
+            }
+            double!EvalError adv2 = self.advance();
+            if !adv2.valid {
+                return adv2.error;
+            }
+            return inner.ok;
+        }
+
+        return EvalError.UnexpectedToken;
+    }
+
+    double!EvalError term() {
+        double!EvalError left = self.factor();
+        if !left.valid {
+            return left.error;
+        }
+        double acc = left.ok;
+
+        while self.tok.kind == TokKind.Star || self.tok.kind == TokKind.Slash {
+            TokKind op = self.tok.kind;
+            double!EvalError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!EvalError right = self.factor();
+            if !right.valid {
+                return right.error;
+            }
+            if op == TokKind.Star {
+                acc = acc * right.ok;
+            } else {
+                if right.ok == 0.0 {
+                    return EvalError.DivisionByZero;
+                }
+                acc = acc / right.ok;
+            }
+        }
+
+        return acc;
+    }
+
+    double!EvalError expr() {
+        double!EvalError left = self.term();
+        if !left.valid {
+            return left.error;
+        }
+        double acc = left.ok;
+
+        while self.tok.kind == TokKind.Plus || self.tok.kind == TokKind.Minus {
+            TokKind op = self.tok.kind;
+            double!EvalError adv = self.advance();
+            if !adv.valid {
+                return adv.error;
+            }
+            double!EvalError right = self.term();
+            if !right.valid {
+                return right.error;
+            }
+            if op == TokKind.Plus {
+                acc = acc + right.ok;
+            } else {
+                acc = acc - right.ok;
+            }
+        }
+
+        return acc;
+    }
+}
+
+double!EvalError evaluate(char* src) {
+    if src.length == 0 {
+        return EvalError.EmptyExpression;
+    }
+    Parser!EvalError p = Parser.new(src);
+    if !p.valid {
+        return p.error;
+    }
+    Parser parser = p.ok;
+    return parser.expr();
+}
+
+char* errorToStr(EvalError e) {
+    if e == EvalError.UnexpectedChar  return "unexpected character";
+    if e == EvalError.UnexpectedToken return "unexpected token";
+    if e == EvalError.DivisionByZero  return "division by zero";
+    if e == EvalError.UnclosedParen   return "unclosed parenthesis";
+    if e == EvalError.EmptyExpression return "empty expression";
+    return "unknown error";
+}
+
+void run(char* expr) {
+    double!EvalError result = evaluate(expr);
+    if !result.valid {
+        printf("%s => error: %s\n", expr, errorToStr(result.error));
+        return;
+    }
+    printf("%s => %g\n", expr, result.ok);
+}
+
+int main() {
+    run("2 + 3 * 4");
+    run("(2 + 3) * 4");
+    run("10 / 2 / 5");
+    run("-5 + 3");
+    run("2 * (3 + (4 - 1))");
+    run("1 + 2 + 3 + 4 + 5");
+    run("10 / 0");
+    run("(1 + 2");
+    run("");
+    run("3 + + 2");
+
+    return 0;
+}

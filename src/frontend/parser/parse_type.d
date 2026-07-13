@@ -35,12 +35,7 @@ public:
 
     TypeExpr parsePointerType(TypeExpr base, Position pos)
     {
-        TypeExpr t = new TypeExprPointer(base, base.pos is null ? pos : p.getPos(base.pos, pos));
-        if (p.match(TokenKind.Star))
-            return parsePointerType(t, pos);
-        if (p.match(TokenKind.LBracket))
-            return parseArrayType(t, pos);
-        return t;
+        return checkAfter(new TypeExprPointer(base, base.pos is null ? pos : p.getPos(base.pos, pos)));
     }
 
     TypeExpr parseFunctionType(TypeExpr base, Position pos)
@@ -53,12 +48,12 @@ public:
                 p.consume(TokenKind.Comma, "Expected ','.");
         }
         p.consume(TokenKind.RParen, "Expected ')'.");
-        return new TypeExprFunction(base, args, pos);
+        return checkAfter(new TypeExprFunction(base, args, pos));
     }
 
     TypeExpr parseResultType(TypeExpr base, Position pos)
     {
-        return new TypeExprResult(base, parse(), pos);
+        return checkAfter(new TypeExprResult(base, parse(), pos));
     }
 
     TypeExpr parseArrayType(TypeExpr base, Position pos)
@@ -79,15 +74,9 @@ public:
             p.err.error(t.pos, "The array size is invalid.");
             type = new TypeExprArray(base, "", pos); // fallback pra não dar erro em comptime por segfault
         }
-        if (p.match(TokenKind.Star))
-            return parsePointerType(type, pos);
-        if (p.match(TokenKind.Bang))
-            return parseResultType(type, pos);
-        if (p.match(TokenKind.LBracket))
-            return parseArrayType(type, pos);
         if (t.kind != TokenKind.RBracket)
             p.consume(TokenKind.RBracket, "Expected ']'.");
-        return type;
+        return checkAfter(type);
     }
 
     TypeExpr parseGenericType(TypeExpr name, Position pos)
@@ -103,30 +92,31 @@ public:
         string n = name.toStr();
         p.generic.add(n, args);
         TypeExprGeneric t = new TypeExprGeneric(n, args, pos);
+        return checkAfter(t);
+    }
+
+    TypeExpr checkAfter(TypeExpr type)
+    {
         if (p.match(TokenKind.Star))
-            return parsePointerType(t, pos);
-        return t;
+            return parsePointerType(type, type.pos);
+
+        if (p.match(TokenKind.LParen))
+            return parseFunctionType(type, type.pos);
+
+        if (p.match(TokenKind.Bang))
+            return parseResultType(type, type.pos);
+
+        if (p.match(TokenKind.LBracket))
+            return parseArrayType(type, type.pos);
+
+        if (p.match(TokenKind.LThan))
+            return parseGenericType(type, type.pos);
+
+        return type;
     }
 
     TypeExpr parse()
     {
-        TypeExpr primary = parsePrimary();
-        
-        if (p.match(TokenKind.Star))
-            return parsePointerType(primary, p.previous().pos);
-
-        if (p.match(TokenKind.LParen))
-            return parseFunctionType(primary, p.previous().pos);
-
-        if (p.match(TokenKind.Bang))
-            return parseResultType(primary, p.previous().pos);
-
-        if (p.match(TokenKind.LBracket))
-            return parseArrayType(primary, p.previous().pos);
-
-        if (p.match(TokenKind.LThan))
-            return parseGenericType(primary, p.previous().pos);
-        
-        return primary;
+        return checkAfter(parsePrimary());
     }
 }

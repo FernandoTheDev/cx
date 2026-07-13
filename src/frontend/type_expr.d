@@ -171,7 +171,19 @@ class TypeExprArray : TypeExpr
 
     override string toStrVar(string var = "") const
     {
-        return base.toStrVar() ~ (var == "" ? "" : " " ~ var) ~ format("[%s]", idx);
+        return buildArray(var);
+    }
+
+    private string buildArray(string var) const
+    {
+        if (auto arrBase = cast(TypeExprArray) base)
+            return arrBase.buildArray(var) ~ arrayType();
+        return base.toStrVar() ~ (var == "" ? "" : " " ~ var) ~ arrayType();
+    }
+
+    string arrayType() const
+    {
+        return format("[%s]", idx);
     }
 
     override string toStr() const
