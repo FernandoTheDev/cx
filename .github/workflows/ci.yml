@@ -56,7 +56,7 @@ jobs:
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub gcc llvm-21-dev
+          apt-get install -y ldc dub gcc llvm-21-dev g++
 
       - name: Install ldc2, dub, llvm (Arch)
         if: matrix.distro == 'arch'
