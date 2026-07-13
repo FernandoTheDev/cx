@@ -26,6 +26,11 @@ private:
     uint line = 1;
 
     TokenKind[string] keywords = [
+        "register": TokenKind.Register,
+        "_Atomic": TokenKind.Atomic,
+        "restrict": TokenKind.Restrict,
+        "volatile": TokenKind.Volatile,
+        "const": TokenKind.Const,
         "return": TokenKind.Return,
         "static": TokenKind.Static,
         "inline": TokenKind.Inline,
@@ -302,6 +307,51 @@ private:
             buffer ~= [advance()];
     }
 
+    string lexString(uint start_o, uint start_l)
+    {
+        String buffer;
+        buffer.reserve(32);
+        
+        while (!isAtEnd() && !check('"'))
+        {
+            checkNewLine(peek());
+            buffer ~= [advance()];
+        }
+        
+        if (!match('"'))
+        {
+            err.error(getPos(start_o, start_l), "The string was not closed.");
+            return "/* err */";
+        }
+
+        /*
+        "Str1"
+        "Str2" "Str3"
+        */
+
+        skipWhiteSpace();
+        string str = buffer.data;
+
+        if (match('"'))
+            return str ~= lexString(loffset, line);
+
+        return str;
+    }
+
+    pragma(inline, true)
+    void skipWhiteSpace()
+    {
+        while (!isAtEnd())
+        {
+            if (peek() == ' ' || peek() == '\r' || peek() == '\t' || checkNewLine(peek()))
+            {
+                advance();
+                continue;
+            }
+            break;
+        }
+    }
+
 public:
     this(string filename, string dir, string source, Diagnostics err, TypeRegistry t)
     {
@@ -327,6 +377,7 @@ public:
             if (isAlpha(ch))
             {
                 uint start_o = loffset;
+                uint l = line;
                 String buffer;
                 buffer.reserve(32);
                 TokenKind kind = TokenKind.Id;
@@ -345,6 +396,40 @@ public:
                 bool isUnion = buffer.data == "union";
                 bool isEnum = buffer.data == "enum";
                 bool isAlias = buffer.data == "alias";
+                bool isRaw = buffer.data == "__raw";
+
+                if (isRaw)
+                {
+                    skipWhiteSpace();
+                    int closes = 1;
+
+                    if (!match('{'))
+                    {
+                        err.error(getPos(loffset, line), "Expected '{' after 'raw'.");
+                        continue;
+                    }
+
+                    String raw;
+                    raw.reserve(64);
+
+                    while (!isAtEnd())
+                    {
+                        ch = advance();
+                        if (ch == '{')
+                            closes++;
+                        else if (ch == '}')
+                            closes--;
+                        if (closes == 0)
+                            break;
+                        raw ~= [ch];
+                    }
+
+                    // skipWhiteSpace();
+                    // advance();
+
+                    pushToken(Token.tk_string(TokenKind.Raw, raw.data, getPos(start_o, l)));
+                    continue;
+                }
 
                 if (isEnum || isStruct || isUnion || isAlias)
                 {
@@ -481,22 +566,7 @@ public:
             {
                 uint start_o = loffset;
                 uint start_l = line;
-                String buffer;
-                buffer.reserve(32);
-
-                while (!isAtEnd() && !check('"'))
-                {
-                    checkNewLine(peek());
-                    buffer ~= [advance()];
-                }
-
-                if (!match('"'))
-                {
-                    err.error(getPos(start_o, start_l), "The string was not closed.");
-                    continue;
-                }
-
-                pushToken(Token.tk_string(TokenKind.String, buffer.data, getPos(start_o, start_l)));
+                pushToken(Token.tk_string(TokenKind.String, lexString(start_o, start_l), getPos(start_o, start_l)));
                 continue;
             }
 

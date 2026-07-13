@@ -44,6 +44,7 @@ void showHelp()
 	writeln("      --no-header       It will not automatically generate the Cx header.");
 	writeln("      --gen-header      It will generate a .h file and a .c file without compiling at the end.");
 	writeln("      --cflags      	Pass compilation flags to the C compiler.");
+	writeln("      --cpp      	Compiles with a C++ compiler.");
 	writeln();
 	writeln("Environment:");
 	writeln("  CC                    C compiler used to build the output (default: cc)");
@@ -63,6 +64,11 @@ void showVersion()
 {
 	writefln("Cx Compiler - Version (%s)", COMPILER_VERSION);
 }
+
+bool which(string c)
+{
+	return executeShell(format("which %s", c)).status == 0;
+} 
 
 int main(string[] argv)
 {
@@ -112,7 +118,7 @@ int main(string[] argv)
 		return runUpdate();
 	}
 
-	bool emitc, opt, dbg, verMessage, helpMessage, genHeader;
+	bool emitc, opt, dbg, verMessage, helpMessage, genHeader, cpp;
 	string[] link, cflags;
 	string output, target;
 
@@ -129,6 +135,7 @@ int main(string[] argv)
 			"no-header", &noHeader,
 			"gen-header", &genHeader,
 			"cflags", &cflags,
+			"cpp", &cpp,
 		);
 	catch (GetOptException e)
 	{
@@ -202,9 +209,9 @@ int main(string[] argv)
 	program.body = ResolveSymbols.resolve(err, ctx, program.body);
 	check_diagnostic(err);
 
-	string fileh = output ~ ".h";
-	string filec = output ~ ".c";
-	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh, ctx).compile();
+	string fileh = output ~ (cpp ? ".hpp" : ".h");
+	string filec = output ~ (cpp ? ".cpp" : ".c");
+	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh, ctx, cpp).compile();
 	check_diagnostic(err);
 	write(filec, src[0]);
 
@@ -221,7 +228,19 @@ int main(string[] argv)
 		return 0;
 	}
 
-	string c_compiler = environment.get("CC", "cc");
+	string comp = "cc";
+	if (cpp) 
+	{
+		// decide o compilador a ser usado
+		comp = which("g++") ? "g++" : (which("clang++") ? "clang++" : "");
+		if (!comp)
+		{
+			writeln("It was not possible to define a default C++ compiler. Use the CC variable to define one.");
+			return 1;
+		}
+	}
+
+	string c_compiler = environment.get("CC", comp);
 	string command = format("%s %s %s -o %s %s %s", c_compiler, filec, (opt ? "-O2" : ""), output,
 		link.length > 0 ? (link.map!(l => format("-l%s", l).array).join(" ")) : "", cflags.join(" "));
 	if (dbg)

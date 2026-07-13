@@ -8,6 +8,12 @@ enum TokenKind : ubyte
     Include,
 
     // keywords
+    Register,
+    Raw,
+    Atomic,
+    Restrict,
+    Const,
+    Volatile,
     Inline,
     Overload,
     Import,

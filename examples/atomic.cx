@@ -1,0 +1,34 @@
+//! counter: 5\nflag: 1\natomic ptr: 99\n
+include <stdio.h>
+include <stdatomic.h>
+include <stdint.h>
+
+struct SharedState {
+    _Atomic u32 counter;
+    _Atomic bool ready;
+}
+
+void increment_counter(_Atomic u32* c, u32 times) {
+    for (u32 i = 0; i < times; i++) {
+        atomic_fetch_add(c, 1);
+    }
+}
+
+bool check_flag(_Atomic bool* flag) {
+    return atomic_load(flag);
+}
+
+int main() {
+    _Atomic u32 counter = 0;
+    increment_counter(&counter, 5);
+    printf("counter: %u\n", atomic_load(&counter));
+
+    _Atomic bool ready = true;
+    printf("flag: %d\n", check_flag(&ready));
+
+    _Atomic u32 value = 99;
+    _Atomic u32* atomic_ptr = &value;
+    printf("atomic ptr: %u\n", atomic_load(atomic_ptr));
+
+    return 0;
+}

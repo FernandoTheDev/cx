@@ -21,7 +21,7 @@ struct Stack<T>
     bool isEmpty() => self.size == 0
     bool isFull() => self.size >= self.cap
 
-    int !StackError push(T val)
+    int!StackError push(T val)
     {
         if self.isFull() return StackError.Overflow;
         self.data[self.size++] = val;

@@ -42,7 +42,7 @@ jobs:
 
       - name: Install ldc2, dub (Fedora)
         if: matrix.distro == 'fedora'
-        run: dnf install -y ldc dub
+        run: dnf install -y ldc dub g++
 
       - name: Install llvm-devel (Fedora)
         if: matrix.distro == 'fedora'
@@ -56,7 +56,7 @@ jobs:
         run: |
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
-          apt-get install -y ldc dub gcc llvm-21-dev
+          apt-get install -y ldc dub gcc llvm-21-dev g++
 
       - name: Install ldc2, dub, llvm (Arch)
         if: matrix.distro == 'arch'

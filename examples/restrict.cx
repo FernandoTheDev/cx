@@ -1,0 +1,39 @@
+//! sum: 66\nproduct: 1600\ncopy: hello world\n
+include <stdio.h>
+include <string.h>
+
+u32 sum_arrays(u32* restrict a, u32* restrict b, u32 n) {
+    u32 total = 0;
+    for (u32 i = 0; i < n; i++)
+        total = total + a[i] + b[i];
+    return total;
+}
+
+u32 product_arrays(u32* restrict a, u32* restrict b, u32 n) {
+    u32 total = 1;
+    for (u32 i = 0; i < n; i++)
+        total = total * a[i] * b[i];
+    return total;
+}
+
+void fast_copy(char* restrict dst, char* restrict src, u32 n) {
+    for (u32 i = 0; i < n; i++)
+        dst[i] = src[i];
+}
+
+int main() {
+    u32[] a = [10, 20, 30];
+    u32[] b = [1, 2, 3];
+    printf("sum: %u\n", sum_arrays(a, b, 3));
+
+    u32[] p1 = [2, 4, 10];
+    u32[] p2 = [1, 10, 2];
+    printf("product: %u\n", product_arrays(p1, p2, 3));
+
+    char[] src = "hello world";
+    char[20] dst;
+    fast_copy(dst, src, 12);
+    printf("copy: %s\n", dst);
+
+    return 0;
+}

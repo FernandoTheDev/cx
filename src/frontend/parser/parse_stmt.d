@@ -177,6 +177,9 @@ public:
         case TokenKind.Import:
             return parseImportStmt(tk.pos);
 
+        case TokenKind.Raw:
+            return new RawStmt(tk.s, tk.pos);
+
         default:
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);
         }

@@ -1,0 +1,23 @@
+//# 0
+include <stdio.h>
+
+enum Error {
+    SixSeven
+}
+
+alias E = int!Error
+
+E bar() {
+    return Error.SixSeven;
+}
+
+E foo() {
+    if true
+        return 0;
+    return bar();
+}
+
+int main() {
+    foo();
+    return 0;
+}

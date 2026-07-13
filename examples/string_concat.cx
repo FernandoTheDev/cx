@@ -1,0 +1,9 @@
+//! Fernando Dev\n
+import std.io;
+
+int main() {
+    char* str = "Fernando "
+                "Dev";
+    printf("%s\n", str);
+    return 0;
+}

@@ -28,6 +28,10 @@ string escape(string str)
                     buffer ~= '\n';
                     offset++;
                     continue;
+                case '\\':
+                    buffer ~= '\\';
+                    offset++;
+                    continue;
                 default:
                     break;
             }
@@ -93,10 +97,12 @@ TestResult runTest(string filename, string llvmLinkFlag)
     string binFile = filename ~ ".bin";
 
     // 1) Cx -> C
-    string llvm;
+    string llvm, cpp;
     if (filename.length > 13 && filename[9..13] == "llvm")
         llvm = llvmLinkFlag;
-    Exec cxComp = executeShell(format("cx %s --output %s %s", filename, binFile, llvm));
+    if (filename.length > 13 && filename[9..12] == "cpp")
+        cpp = "--cpp";
+    Exec cxComp = executeShell(format("cx %s --output %s %s %s", filename, binFile, llvm, cpp));
     if (cxComp.status != 0)
     {
         res.ok  = false;

@@ -1,0 +1,14 @@
+//! Fernando Dev\n
+import std.io;
+
+struct Foo {
+    char[10] bar;
+}
+
+int main() {
+    char[10] name = "Fernando";
+    Foo f = {name};
+    Foo b = {"Dev"};
+    printf("%s %s\n", f.bar, b.bar);
+    return 0;
+}

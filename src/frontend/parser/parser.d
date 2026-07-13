@@ -48,6 +48,8 @@ class Parser
     {
         if (l is null) 
             return r;
+        if (r is null) 
+            return l;
         return new Position(l.filename, l.dir, l.start, r.end);
     }
 
@@ -154,6 +156,7 @@ class Parser
         case TokenKind.Break:
         case TokenKind.Import:
         case TokenKind.Goto:
+        case TokenKind.Raw:
             return true;
         default:
             return false;
