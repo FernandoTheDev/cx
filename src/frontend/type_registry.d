@@ -31,6 +31,10 @@ public:
         types["bool"] = new TypeExprNamed("int");
         types["void"] = new TypeExprNamed("void");
         types["cstr"] = new TypeExprPointer(types["char"]);
+        types["volatile"] = new TypeExprNamed("volatile");
+        types["const"] = new TypeExprNamed("const");
+        types["_Atomic"] = new TypeExprNamed("_Atomic");
+        types["restrict"] = new TypeExprNamed("restrict");
         
         if (!noHeader)
         {

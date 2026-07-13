@@ -1,0 +1,31 @@
+//! volatile: 42\nvolatile ptr: 7\nconst volatile: 100\n
+include <stdio.h>
+include <stdint.h>
+
+struct HardwareReg {
+    volatile u32 status;
+    volatile u32 data;
+}
+
+void write_to_device(volatile u32* reg, u32 value) {
+    *reg = value;
+}
+
+u32 read_from_device(volatile u32* reg) {
+    return *reg;
+}
+
+int main() {
+    volatile int sensor = 42;
+    printf("volatile: %d\n", sensor);
+
+    volatile u32 hw_register = 0;
+    volatile u32* ptr = &hw_register;
+    write_to_device(ptr, 7);
+    printf("volatile ptr: %u\n", read_from_device(ptr));
+
+    const volatile u32 device_id = 100;
+    printf("const volatile: %u\n", device_id);
+
+    return 0;
+}

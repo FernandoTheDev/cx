@@ -46,6 +46,26 @@ public:
         case TokenKind.String:
             return new StringLit(tk.s, tk.pos);
 
+        case TokenKind.Const:
+            Node n = parse();
+            n.type_expr = new TypeExprConst(n.type_expr, tk.pos);
+            return n;
+
+        case TokenKind.Volatile:
+            Node n = parse();
+            n.type_expr = new TypeExprVolatile(n.type_expr, tk.pos);
+            return n;
+
+        case TokenKind.Atomic:
+            Node n = parse();
+            n.type_expr = new TypeExprAtomic(n.type_expr, tk.pos);
+            return n;
+
+        case TokenKind.Restrict:
+            Node n = parse();
+            n.type_expr = new TypeExprRestrict(n.type_expr, tk.pos);
+            return n;
+
         case TokenKind.Id:
             TypeExpr* t = p.types.get(tk.s);
             TypeExpr t2;
@@ -137,6 +157,7 @@ public:
             return parseCastOrNode(tk.pos);
 
         default:
+            tk.print();
             p.err.error(tk.pos, "An expression is expected.");
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);
         }
@@ -145,6 +166,10 @@ public:
     bool looksLikeTypeStart(TokenKind k)
     {
         return k == TokenKind.Id
+            || k == TokenKind.Volatile
+            || k == TokenKind.Const
+            || k == TokenKind.Restrict
+            || k == TokenKind.Atomic
             || k == TokenKind.Star
             || k == TokenKind.LParen
             || k == TokenKind.LThan
@@ -275,12 +300,23 @@ public:
 
     Node parseCastOrNode(Position pos)
     {
-        if (p.check(TokenKind.Id))
+        if (
+            p.check(TokenKind.Id) 
+            || p.check(TokenKind.Volatile) 
+            || p.check(TokenKind.Const)
+            || p.check(TokenKind.Atomic)
+            || p.check(TokenKind.Restrict)
+        )
         {
             if (
                 p.future(TokenKind.Star, 1)
                 || p.future(TokenKind.RParen, 1)
                 || p.future(TokenKind.LThan, 1)
+                || p.future(TokenKind.Id, 1)
+                || p.future(TokenKind.Volatile, 1)
+                || p.future(TokenKind.Const, 1)
+                || p.future(TokenKind.Restrict, 1)
+                || p.future(TokenKind.Atomic, 1)
                 || p.future(TokenKind.LBracket, 1)
                 )
                 if (p.types.exists(p.peek().s))

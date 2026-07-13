@@ -1,0 +1,16 @@
+//# 0
+include <iostream>
+
+__raw {
+    using namespace std;
+}
+
+int main() {
+    const char* name = "Fernando";
+
+    __raw {
+        cout << name << endl;
+    }
+    
+    return 0;
+}

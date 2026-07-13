@@ -112,11 +112,34 @@ public:
         if (p.match(TokenKind.LThan))
             return parseGenericType(type, type.pos);
 
+        if (p.match(TokenKind.Restrict))
+            return new TypeExprRestrict(type, type.pos);
+
         return type;
+    }
+
+    TypeExpr parseInit()
+    {
+        // import std.stdio;
+        // writeln(p.peek().s);
+
+        if (p.match(TokenKind.Const))
+            return new TypeExprConst(parseInit(), Position.init);
+
+        if (p.match(TokenKind.Volatile))
+            return new TypeExprVolatile(parseInit(), Position.init);
+
+        if (p.match(TokenKind.Atomic))
+            return new TypeExprAtomic(parseInit(), Position.init);
+
+        if (p.match(TokenKind.Restrict))
+            return new TypeExprRestrict(parseInit(), Position.init);
+
+        return parsePrimary();
     }
 
     TypeExpr parse()
     {
-        return checkAfter(parsePrimary());
+        return checkAfter(parseInit());
     }
 }

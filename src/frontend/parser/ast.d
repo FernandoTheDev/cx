@@ -50,6 +50,7 @@ enum NodeKind : ubyte
     ImportStmt, // 1 2
     AssignStmt, // 1 2
     DeferStmt, // 1 2
+    RawStmt, // 1 2
 }
 
 abstract class Node
@@ -1450,6 +1451,31 @@ class ArrayLit : Node
     {
         type_expr = subGenericType(type_expr, names, types);
         subGenericArr(values, names, types);
+    }
+}
+
+class RawStmt : Node
+{
+    string code;
+    this(string code, Position pos)
+    {
+        super(NodeKind.RawStmt, pos);
+        this.code = code;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "RawStmt");
+    }
+
+    override RawStmt dup()
+    {
+        return new RawStmt(code, pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        //
     }
 }
 

@@ -17,6 +17,10 @@ enum TypeExprKind : ubyte
     Function,
     Result,
     Generic,
+    Const,
+    Volatile,
+    Restrict,
+    Atomic,
 }
 
 abstract class TypeExpr
@@ -543,5 +547,209 @@ class TypeExprGeneric : TypeExpr
                 return true;
         }
         return false;
+    }
+}
+
+class TypeExprConst : TypeExpr
+{
+    TypeExpr base;
+
+    this(TypeExpr base, Position p = Position.init)
+    {
+        this.kind = TypeExprKind.Const;
+        this.base = base;
+        this.pos = p;
+    }
+
+    override string toString() const
+    {
+        return toStrVar();
+    }
+
+    override string toStrVar(string var = "") const
+    {
+        return "const " ~ base.toStrVar(var);
+    }
+
+    override string toStr() const
+    {
+        return base.toStr();
+    }
+
+    override TypeExprConst dup()
+    {
+        auto n = new TypeExprConst(base is null ? null : base.dup(), pos);
+        n.kind = kind;
+        return n;
+    }
+
+    override TypeExpr subGeneric(string[] names, TypeExpr[] types)
+    {
+        base = resolveGeneric(base, names, types);
+        return this;
+    }
+
+    override void collectGenerics(void delegate(TypeExprGeneric) callback)
+    {
+        if (base !is null)
+            base.collectGenerics(callback);
+    }
+
+    override bool containsOpenGeneric(bool delegate(string) isOpen)
+    {
+        return base !is null && base.containsOpenGeneric(isOpen);
+    }
+}
+
+class TypeExprVolatile : TypeExpr
+{
+    TypeExpr base;
+
+    this(TypeExpr base, Position p = Position.init)
+    {
+        this.kind = TypeExprKind.Volatile;
+        this.base = base;
+        this.pos = p;
+    }
+
+    override string toString() const
+    {
+        return toStrVar();
+    }
+
+    override string toStrVar(string var = "") const
+    {
+        return "volatile " ~ base.toStrVar(var);
+    }
+
+    override string toStr() const
+    {
+        return base.toStr();
+    }
+
+    override TypeExprVolatile dup()
+    {
+        auto n = new TypeExprVolatile(base is null ? null : base.dup(), pos);
+        n.kind = kind;
+        return n;
+    }
+
+    override TypeExpr subGeneric(string[] names, TypeExpr[] types)
+    {
+        base = resolveGeneric(base, names, types);
+        return this;
+    }
+
+    override void collectGenerics(void delegate(TypeExprGeneric) callback)
+    {
+        if (base !is null)
+            base.collectGenerics(callback);
+    }
+
+    override bool containsOpenGeneric(bool delegate(string) isOpen)
+    {
+        return base !is null && base.containsOpenGeneric(isOpen);
+    }
+}
+
+class TypeExprRestrict : TypeExpr
+{
+    TypeExpr base;
+
+    this(TypeExpr base, Position p = Position.init)
+    {
+        this.kind = TypeExprKind.Restrict;
+        this.base = base;
+        this.pos = p;
+    }
+
+    override string toString() const
+    {
+        return toStrVar();
+    }
+
+    override string toStrVar(string var = "") const
+    {
+        return  base.toStrVar() ~  " restrict " ~ var;
+    }
+
+    override string toStr() const
+    {
+        return base.toStr();
+    }
+
+    override TypeExprRestrict dup()
+    {
+        auto n = new TypeExprRestrict(base is null ? null : base.dup(), pos);
+        n.kind = kind;
+        return n;
+    }
+
+    override TypeExpr subGeneric(string[] names, TypeExpr[] types)
+    {
+        base = resolveGeneric(base, names, types);
+        return this;
+    }
+
+    override void collectGenerics(void delegate(TypeExprGeneric) callback)
+    {
+        if (base !is null)
+            base.collectGenerics(callback);
+    }
+
+    override bool containsOpenGeneric(bool delegate(string) isOpen)
+    {
+        return base !is null && base.containsOpenGeneric(isOpen);
+    }
+}
+
+class TypeExprAtomic : TypeExpr
+{
+    TypeExpr base;
+
+    this(TypeExpr base, Position p = Position.init)
+    {
+        this.kind = TypeExprKind.Atomic;
+        this.base = base;
+        this.pos = p;
+    }
+
+    override string toString() const
+    {
+        return toStrVar();
+    }
+
+    override string toStrVar(string var = "") const
+    {
+        return "_Atomic " ~ base.toStrVar(var);
+    }
+
+    override string toStr() const
+    {
+        return base.toStr();
+    }
+
+    override TypeExprAtomic dup()
+    {
+        auto n = new TypeExprAtomic(base is null ? null : base.dup(), pos);
+        n.kind = kind;
+        return n;
+    }
+
+    override TypeExpr subGeneric(string[] names, TypeExpr[] types)
+    {
+        base = resolveGeneric(base, names, types);
+        return this;
+    }
+
+    override void collectGenerics(void delegate(TypeExprGeneric) callback)
+    {
+        if (base !is null)
+            base.collectGenerics(callback);
+    }
+
+    override bool containsOpenGeneric(bool delegate(string) isOpen)
+    {
+        return base !is null && base.containsOpenGeneric(isOpen);
     }
 }

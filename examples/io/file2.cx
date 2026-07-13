@@ -51,7 +51,7 @@ int main() {
     }
 
     printf("Sum from file: %d\n", sum);
-    // remove(filename);
+    remove(filename);
 
     return 0;
 }

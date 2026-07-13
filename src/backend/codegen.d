@@ -137,6 +137,10 @@ private:
         case NodeKind.ImportStmt:
             return;
 
+        case NodeKind.RawStmt:
+            RawStmt n = cast(RawStmt) node;
+            return emit(indent("/* raw block */", ind) ~ n.code, 0);
+
         default:
             emit("/* invalid decl */", ind);
             return;
@@ -227,6 +231,10 @@ private:
             foreach (Node _; n.body)
                 emit(compileStmt(_, ind), ind);
             return "";
+
+        case NodeKind.RawStmt:
+            RawStmt n = cast(RawStmt) node;
+            return indent("/* raw block */", ind) ~ n.code;
 
         default:
             return indent("/* invalid stmt */", ind);
@@ -726,6 +734,7 @@ private:
         }
         if (!fromGeneric)
             methodType = "";
+        if (args.length == 0) args = "void";
         bool cond = fn.type_expr.kind == TypeExprKind.Function;
         string name = cond ? format("%s(%s)", fn.name, args) : fn.name;
         name = clearNameMangling(name);
@@ -809,7 +818,7 @@ private:
 
 public:
     this(Program program, TypeRegistry types, bool[string] staticFunctions, bool noHeader, bool genHeaderFile, 
-        string headerFile, ImportResolverContext* context)
+        string headerFile, ImportResolverContext* context, bool isCpp)
     {
         this.program = program;
         this.types = types;
@@ -829,8 +838,10 @@ public:
 
 #ifndef __STDDEF_H
    #include <stddef.h>
-#endif
+#endif`;
 
+    if (!isCpp)
+        cxHeader ~= `
 #ifndef NULL
    #define NULL (void*)0
 #endif

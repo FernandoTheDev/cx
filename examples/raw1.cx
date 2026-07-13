@@ -1,0 +1,22 @@
+//! fast_add: 30\nclz: 29\n
+include <stdio.h>
+
+u32 fast_add(u32 a, u32 b) {
+    u32 result;
+    __raw {
+        __asm__ __volatile__(
+            "addl %%ebx, %%eax"
+            : "=a" (result)
+            : "a" (a), "b" (b)
+        );
+    }
+    return result;
+}
+
+u32 count_leading_zeros(u32 x) => __builtin_clz(x)
+
+int main() {
+    printf("fast_add: %u\n", fast_add(10, 20));
+    printf("clz: %u\n", count_leading_zeros(7));
+    return 0;
+}
