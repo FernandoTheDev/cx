@@ -42,7 +42,7 @@ jobs:
 
       - name: Install ldc2, dub (Fedora)
         if: matrix.distro == 'fedora'
-        run: dnf install -y ldc dub
+        run: dnf install -y ldc dub g++
 
       - name: Install llvm-devel (Fedora)
         if: matrix.distro == 'fedora'
