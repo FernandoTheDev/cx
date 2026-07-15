@@ -1,22 +1,33 @@
 import std.lib;
 
-struct Arena 
+/// A simple bump allocator. Grows by reallocating when capacity
+/// is exceeded; never shrinks. Caller owns the lifetime and must
+/// call `free()` when done.
+struct Arena
 {
     char* data;
     u32 size;
     u32 cap;
 
-    static Arena new(u32 cap) 
+    /// Creates a new Arena with the given initial capacity in bytes.
+    /// The underlying buffer is zero-initialized.
+    static Arena new(u32 cap)
     {
         char* data = calloc(1, cap);
         return (Arena) {data, 0, cap};
     }
 
+    /// Rounds `size` up to the next multiple of 8, ensuring
+    /// allocations stay aligned. Internal helper used by `alloc`.
     u32 alignUp(u32 size)
     {
         return (size + 7) & ~7;
     }
 
+    /// Allocates `size` bytes from the arena, aligned to 8 bytes.
+    /// Grows the underlying buffer automatically if there isn't
+    /// enough room left. Returns a pointer valid until `free()`
+    /// is called or the arena is reallocated again.
     void* alloc(u32 size)
     {
         size = self.alignUp(size);
@@ -32,7 +43,9 @@ struct Arena
         return (void*) data;
     }
 
-    void free() 
+    /// Releases the underlying buffer. After calling this, every
+    /// pointer previously returned by `alloc()` is invalid.
+    void free()
     {
         free(self.data);
     }

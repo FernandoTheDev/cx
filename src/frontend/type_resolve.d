@@ -173,6 +173,13 @@ private:
             resolveExprType((cast(TypeNameExpr) n).expr, scp);
             return n.type_expr;
 
+        case NodeKind.TernaryExpr:
+            TernaryExpr tn = cast(TernaryExpr) n;
+            resolveExprType(tn.expr, scp);
+            resolveExprType(tn.left, scp);
+            resolveExprType(tn.right, scp);
+            return tn.left.type_expr;
+
         default:
             // já vêm com type_expr setado no próprio construtor
             return n.type_expr;

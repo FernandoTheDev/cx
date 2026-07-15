@@ -2,6 +2,7 @@
 module frontend.type_expr;
 
 import frontend.lexer : Position;
+import utils;
 
 import std.format;
 import std.stdio;
@@ -419,7 +420,7 @@ class TypeExprResult : TypeExpr
 
     override string toStrVar(string var = "") const
     {
-        return format("%s%s", ok.toStr(), error.toStr()) ~ (var == "" ? "" : " " ~ var);
+        return format("%s%s", clearNameMangling(ok.toString()), error.toString()) ~ (var == "" ? "" : " " ~ var);
     }
 
     override string toStr() const

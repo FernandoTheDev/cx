@@ -1,0 +1,46 @@
+include <string.h>
+
+struct Path {
+    static char* ext(char* path) {
+        char* dot = strrchr(path, '.');
+        if dot == null || dot == path return "";
+        return dot + 1;
+    }
+
+    static char* base(char* path) {
+        char* slash = strrchr(path, '/');
+        if slash == null
+            // Fallback para Windows
+            slash = strrchr(path, '\\');
+        if slash == null return path;
+        return slash + 1;
+    }
+
+    static char* dir(char* path) {
+        char* slash = strrchr(path, '/');
+        if slash == null
+            slash = strrchr(path, '\\');
+        if slash != null {
+            *slash = '\0';
+            return path;
+        }
+        return ".";
+    }
+
+    static char* join(char* a, char* b) {
+        size_t lenA = strlen(a);
+        size_t lenB = strlen(b);
+        
+        // Verifica se 'a' já termina com '/'
+        bool needsSlash = (lenA > 0 && a[lenA - 1] != '/' && a[lenA - 1] != '\\');
+        size_t extra = needsSlash ? 1 : 0;
+        
+        char* result = (char*)malloc(lenA + extra + lenB + 1);
+        if result == null return null;
+        
+        strcpy(result, a);
+        if needsSlash strcat(result, "/");
+        strcat(result, b);
+        return result;
+    }
+}

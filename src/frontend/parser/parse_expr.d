@@ -12,6 +12,7 @@ enum Precedence : ubyte
 {
     Low,
     Assign, // = += -= etc
+    Ternary, // ?
     Or, // ||
     And, // &&
     BitOr, // |
@@ -407,6 +408,14 @@ public:
         return new IndexExpr(left, idx, p.getPos(left.pos, end));
     }
 
+    Node parseTernaryExpr(Node expr)
+    {
+        Node left = parse();
+        p.consume(TokenKind.Colon, "Expected ':'");
+        Node right = parse();
+        return new TernaryExpr(expr, left, right, p.getPos(expr.pos, right.pos));
+    }
+
     Node led(Node left)
     {
         Token tk = p.advance();
@@ -452,6 +461,8 @@ public:
         case TokenKind.PPlus:
         case TokenKind.MMinus:
             return new UnaryExpr(left, tk.kind, tk.pos, true);
+        case TokenKind.Question:
+            return parseTernaryExpr(left);
         default:
             return left;
         }
@@ -472,6 +483,8 @@ public:
         case TokenKind.SHLEquals:
         case TokenKind.SHREquals:
             return Precedence.Assign;
+        case TokenKind.Question:
+            return Precedence.Ternary;
         case TokenKind.Or:
             return Precedence.Or;
         case TokenKind.And:

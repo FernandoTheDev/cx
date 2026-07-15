@@ -1,0 +1,26 @@
+//! age: 18\nkey 'fernando' not found\nupdated age: 19\nkeys: 3\n
+import std.hashmap;
+import std.io;
+
+int main() { 
+    HashMap<int> map = HashMap<int>.new(16); 
+    defer map.delete(); 
+
+    map.set("age", 18); 
+    map.set("year", 2026); 
+    map.set("port", 8080); 
+
+    Box<int> age = map.get("age"); 
+    if !age.isEmpty()
+        printf("age: %d\n", age.unwrap()); 
+
+    Box<int> nonexistent = map.get("fernando"); 
+    if nonexistent.isEmpty()
+        printf("key 'fernando' not found\n"); 
+
+    map.set("age", 19); // overwrite 
+    printf("updated age: %d\n", map.get("age").unwrap()); 
+    printf("keys: %d\n", map.size); 
+
+    return 0;
+}

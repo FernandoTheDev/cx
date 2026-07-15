@@ -1,0 +1,29 @@
+//# 0
+import std.file;
+import std.path;
+import std.io;
+
+int main() {
+    char* testPath = "test.txt";
+    
+    char* ext = Path.ext(testPath);
+    printf("Extension: %s\n", ext);
+
+    bool!FileError writeRes = File.writeText(testPath, "Hello Cx World!");
+    if !writeRes.valid {
+        printf("Failed to write: %d\n", writeRes.error);
+        return 1;
+    }
+
+    char*!FileError readRes = File.readText(testPath);
+    if !readRes.valid {
+        printf("Failed to read: %d\n", readRes.error);
+        return 1;
+    }
+    
+    char* content = readRes.ok;
+    printf("File content: %s\n", content);
+    
+    free(content);
+    return 0;
+}

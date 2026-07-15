@@ -1,0 +1,25 @@
+//! F1\nchar*\n
+import std.io;
+
+alias F1 = Foo<char*, int>
+
+struct Foo<K, T> {
+    void bar(T val) {
+        if __is(F1, Foo<K, T>)
+            printf("F1\n");
+        else if __is(K, char*)
+            printf("char*\n");
+        else
+            printf("%s %s\n", __type(K), __type(T));
+    }
+}
+
+int main() {
+    F1 f1; 
+    f1.bar(60);
+    
+    Foo<char*, long> f2; 
+    f2.bar(60);
+
+    return 0;
+}

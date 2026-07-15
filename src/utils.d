@@ -30,3 +30,14 @@ string ext(string file)
 {
     return (file[$ - 3 .. $] != ".cx") ? file ~ ".cx" : file;
 }
+
+string clearNameMangling(string name)
+{
+    string buff;
+    for (ulong i; i < name.length; i++)
+        if (name[i] == '*')
+            buff ~= 'P';
+        else
+            buff ~= name[i];
+    return buff;
+}

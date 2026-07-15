@@ -1,0 +1,137 @@
+//! age: 18\nkey 'fernando' not found\nupdated age: 19\nkeys: 3\n
+import std.string;
+import std.lib;
+import std.box;
+
+u32 murmur3(char* key, u32 len, u32 seed) {
+    u32 c1 = 0xcc9e2d51;
+    u32 c2 = 0x1b873593;
+    u32 h1 = seed;
+    u32 roundedEnd = (len & 0xfffffffc); // múltiplo de 4 mais próximo, pra baixo
+
+    u32 i = 0;
+    while i < roundedEnd {
+        u32 k1 = (key[i] & 0xff)
+            | ((key[i + 1] & 0xff) << 8)
+            | ((key[i + 2] & 0xff) << 16)
+            | ((key[i + 3] & 0xff) << 24);
+
+        k1 = k1 * c1;
+        k1 = (k1 << 15) | (k1 >> 17);
+        k1 = k1 * c2;
+
+        h1 = h1 ^ k1;
+        h1 = (h1 << 13) | (h1 >> 19);
+        h1 = h1 * 5 + 0xe6546b64;
+
+        i = i + 4;
+    }
+
+    u32 k1 = 0;
+    u32 rem = len & 3;
+    if rem == 3 {
+        k1 = k1 ^ ((key[roundedEnd + 2] & 0xff) << 16);
+    }
+    if rem >= 2 {
+        k1 = k1 ^ ((key[roundedEnd + 1] & 0xff) << 8);
+    }
+    if rem >= 1 {
+        k1 = k1 ^ (key[roundedEnd] & 0xff);
+        k1 = k1 * c1;
+        k1 = (k1 << 15) | (k1 >> 17);
+        k1 = k1 * c2;
+        h1 = h1 ^ k1;
+    }
+
+    h1 = h1 ^ len;
+    h1 = h1 ^ (h1 >> 16);
+    h1 = h1 * 0x85ebca6b;
+    h1 = h1 ^ (h1 >> 13);
+    h1 = h1 * 0xc2b2ae35;
+    h1 = h1 ^ (h1 >> 16);
+
+    return h1;
+}
+
+u32 hashKey(char* key) {
+    return murmur3(key, key.length, 0x9747b28c);
+}
+
+struct Entry<V> {
+    char* key;
+    V value;
+    Entry<V>* next;
+
+    static Entry<V>* create(char* key, V value) {
+        Entry<V>* e = malloc(sizeof(Entry<V>));
+        e.key = key;
+        e.value = value;
+        e.next = null;
+        return e;
+    }
+}
+
+struct HashMap<V> {
+    Entry<V>** buckets;
+    u32 cap;
+    u32 size;
+
+    static HashMap<V> new(u32 cap) {
+        Entry<V>** buckets = calloc(cap, sizeof(Entry<V>*));
+        return (HashMap<V>) {buckets, cap, 0};
+    }
+
+    u32 bucketIndex(char* key) {
+        return hashKey(key) % self.cap;
+    }
+
+    void set(char* key, V value) {
+        u32 idx = self.bucketIndex(key);
+        Entry<V>* curr = self.buckets[idx];
+
+        while curr != null {
+            if strcmp(curr.key, key) == 0 {
+                curr.value = value;
+                return;
+            }
+            curr = curr.next;
+        }
+
+        Entry<V>* entry = Entry<V>.create(key, value);
+        entry.next = self.buckets[idx];
+        self.buckets[idx] = entry;
+        self.size = self.size + 1;
+    }
+
+    Box<V> get(char* key) {
+        u32 idx = self.bucketIndex(key);
+        Entry<V>* curr = self.buckets[idx];
+
+        while curr != null {
+            if curr.key === key 
+                return Box<V>.of(curr.value);
+            curr = curr.next;
+        }
+
+        return Box<V>.empty();
+    }
+
+    bool has(char* key) {
+        Box<V> res = self.get(key);
+        return !res.isEmpty();
+    }
+
+    void delete() {
+        u32 i = 0;
+        while i < self.cap {
+            Entry<V>* curr = self.buckets[i];
+            while curr != null {
+                Entry<V>* next = curr.next;
+                free(curr);
+                curr = next;
+            }
+            i = i + 1;
+        }
+        free(self.buckets);
+    }
+}
