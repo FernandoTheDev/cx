@@ -1,11 +1,8 @@
 //! Hello from Cx ;) \n
-import std; // importa todos os módulos (sem subdiretórios) da stdlib
+import std.io;
 
 int main() {
     printf("Hello from Cx ;) \n");
     return 0;
 }
 
-int main() {
-    return 1;
-}

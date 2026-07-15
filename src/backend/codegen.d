@@ -540,6 +540,10 @@ private:
             // writeln("right: ", tn.right.toStr());
             return format("%s", tn.left.toStr() == tn.right.toStr() ? "true" : "false");
 
+        case NodeKind.TernaryExpr:
+            TernaryExpr tn = cast(TernaryExpr) node;
+            return format("%s ? %s : %s", compileExpr(tn.expr), compileExpr(tn.left), compileExpr(tn.right));
+
         default:
             return "/* invalid expr */";
         }
@@ -763,17 +767,6 @@ private:
         actualType = a;
     }
 
-    string clearNameMangling(string name)
-    {
-        string buff;
-        for (ulong i; i < name.length; i++)
-            if (name[i] == '*')
-                buff ~= 'P';
-            else
-                buff ~= name[i];
-        return buff;
-    }
-
     void compileFnDecl(FnDecl fn, uint ind, bool isMethod = false, string methodType = "", bool fromGeneric = false)
     {
         defer = []; // limpa
@@ -817,7 +810,7 @@ private:
         if (fnErrorUnion)
         {
             TypeExprResult res = cast(TypeExprResult) fn.type_expr;
-            fnUnion = res.toString();
+            fnUnion = clearNameMangling(res.toString());
             fnError[0] = res.ok;
             fnError[1] = res.error;
 
@@ -827,7 +820,7 @@ private:
                 errorUnions[fnUnion] = true;
                 typedefs ~= format("typedef struct %s %s;", fnUnion, fnUnion);
                 unionErrors ~= format("struct %s { bool valid; union { %s ok; %s error; } val; };", fnUnion,
-                    res.ok.toStr(), res.error.toStr());
+                    res.ok.toString(), res.error.toStr());
             }
         }
         bool hasReturn;

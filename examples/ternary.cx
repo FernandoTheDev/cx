@@ -1,0 +1,6 @@
+//# 67
+
+/// The Main Function
+int main() {
+    return 0 == 0 ? 67 : 69;
+}

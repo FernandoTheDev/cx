@@ -1,0 +1,85 @@
+import std.array;
+import std.lib;
+include <stdlib.h>
+include <stdio.h>
+
+enum FileError {
+    NotFound,
+    PermissionDenied,
+    ReadError,
+    WriteError,
+    InvalidPath,
+}
+
+struct File {
+    static bool exists(char* path) {
+        FILE* f = fopen(path, "r");
+        if f == null return false;
+        fclose(f);
+        return true;
+    }
+
+    static u64!FileError size(char* path) {
+        FILE* f = fopen(path, "rb");
+        if f == null return FileError.NotFound;
+        defer fclose(f);
+        
+        if fseek(f, 0, SEEK_END) != 0 return FileError.ReadError;
+        long sz = ftell(f);
+        if sz < 0 return FileError.ReadError;
+        return (u64)sz;
+    }
+
+    static Array<u8>!FileError readBytes(char* path) {
+        FILE* f = fopen(path, "rb");
+        if f == null return FileError.NotFound;
+        defer fclose(f);
+
+        if fseek(f, 0, SEEK_END) != 0 return FileError.ReadError;
+        long sz = ftell(f);
+        if sz < 0 return FileError.ReadError;
+        fseek(f, 0, SEEK_SET);
+
+        Array<u8> buffer = Array<u8>.new((uint)sz);
+        
+        uint read_count = (uint)fread(buffer.data, 1, (size_t)sz, f);
+        if read_count != (uint)sz {
+            if buffer.data != null 
+                free(buffer.data);
+            buffer.free();
+            return FileError.ReadError;
+        }
+        
+        buffer.size = read_count;
+        return buffer;
+    }
+
+    static char*!FileError readText(char* path) {
+        FILE* f = fopen(path, "r");
+        if f == null return FileError.NotFound;
+        defer fclose(f);
+
+        if fseek(f, 0, SEEK_END) != 0 return FileError.ReadError;
+        long sz = ftell(f);
+        if sz < 0 return FileError.ReadError;
+        fseek(f, 0, SEEK_SET);
+
+        char* buffer = (char*)malloc((size_t)sz + 1);
+        if buffer == null return FileError.ReadError;
+
+        uint read_count = (uint)fread(buffer, 1, (size_t)sz, f);
+        buffer[read_count] = '\0'; // Null-terminate
+        
+        return buffer;
+    }
+
+    static bool!FileError writeText(char* path, char* content) {
+        FILE* f = fopen(path, "w");
+        if f == null return FileError.PermissionDenied;
+        defer fclose(f);
+
+        if fputs(content, f) == EOF
+            return FileError.WriteError;
+        return true;
+    }
+}

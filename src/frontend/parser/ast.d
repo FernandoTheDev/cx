@@ -33,6 +33,7 @@ enum NodeKind : ubyte
     TypeNameExpr, // 1 2
     IsExpr, // 1 2
     TTypeExpr, // 1 2
+    TernaryExpr, // 1 2
 
     IncludeHeader, // 1 2
     VarDecl, // 1 2
@@ -1682,6 +1683,36 @@ class IsExpr : Node
     {
         left = subGenericType(left, names, types);
         right = subGenericType(right, names, types);
+    }
+}
+
+class TernaryExpr : Node
+{
+    Node expr, left, right;
+
+    this(Node expr, Node left, Node right, Position pos)
+    {
+        super(NodeKind.TernaryExpr, pos);
+        this.expr = expr;
+        this.left = left;
+        this.right = right;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "TernaryExpr");
+    }
+
+    override TernaryExpr dup()
+    {
+        return new TernaryExpr(expr.dup(), left.dup(), right.dup(), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        expr.subGeneric(names, types);
+        left.subGeneric(names, types);
+        right.subGeneric(names, types);
     }
 }
 
