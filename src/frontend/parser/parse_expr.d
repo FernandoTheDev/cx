@@ -185,7 +185,7 @@ public:
             return parseCastOrNode(tk.pos);
 
         default:
-            tk.print();
+            // tk.print();
             p.err.error(tk.pos, "An expression is expected.");
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);
         }

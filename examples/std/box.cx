@@ -1,0 +1,8 @@
+//# 67
+import std.box;
+import std.io;
+
+int main() {
+    Box<int> val = Box<int>.of(67);
+    return val.unwrap();
+}

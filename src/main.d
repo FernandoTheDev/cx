@@ -7,8 +7,8 @@ import utils;
 import env;
 
 import std.path : dirName, baseName, extension;
-import core.stdc.stdlib : exit;
 import std.stdio : writeln, writefln;
+import core.stdc.stdlib : exit;
 import std.algorithm;
 import std.exception;
 import std.process;
@@ -57,6 +57,8 @@ void showHelp()
 	writeln("  cx main.cx --emit-c");
 	writeln("  cx main.cx -L m -L pthread -o app");
 	writeln("  CC=x86_64-w64-mingw32-gcc cx main.cx -o main.exe");
+	writeln();
+	writeln("Made in Brazil");
 }
 
 pragma(inline, true)
@@ -169,7 +171,7 @@ int main(string[] argv)
 			target = "unknown";
 	}
 
-	cx_enforce(argv.length == 2, "The compiler expects at least one file.");
+	cx_enforce(argv.length == 2, "The compiler expects at least one file, see 'cx -h'.");
 	string filename = argv[1];
 	cx_enforce(extension(filename) == ".cx", "The file is not a valid .cx file.");
 	cx_enforce(exists(filename), format("The file '%s' does not exist.", filename));
