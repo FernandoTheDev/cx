@@ -1,0 +1,14 @@
+//# 67
+struct Foo {
+    union bar {
+        int i;
+        float f;
+    };
+}
+
+int main() {
+    Foo f1 = { bar.i = 67 };
+    Foo f2 = { bar.f = 7f };
+    return (int) f1.bar.i + f1.bar.f;
+    return 0;
+}

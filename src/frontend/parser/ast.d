@@ -28,8 +28,11 @@ enum NodeKind : ubyte
     CallExpr, // 1 2
     BinaryExpr, // 1 2
     UnaryExpr, // 1 2
-    SizeOfExpr, // 1 2
     GroupExpr, // 1 2
+    SizeOfExpr, // 1 2
+    TypeNameExpr, // 1 2
+    IsExpr, // 1 2
+    TTypeExpr, // 1 2
 
     IncludeHeader, // 1 2
     VarDecl, // 1 2
@@ -51,6 +54,8 @@ enum NodeKind : ubyte
     AssignStmt, // 1 2
     DeferStmt, // 1 2
     RawStmt, // 1 2
+    SwitchStmt, // 1 2
+    CaseStmt, // 1 2
 }
 
 abstract class Node
@@ -121,10 +126,8 @@ private TypeExpr subGenericType(TypeExpr t, string[] names, TypeExpr[] types)
     if (auto named = cast(TypeExprNamed) t)
     {
         foreach (i, n; names)
-        {
             if (n == named.name)
-                return types[i];
-        }
+                return types[i].dup();
         return t;
     }
 
@@ -939,11 +942,14 @@ class StructDecl : Node
 {
     string name;
     string[] genericT;
+    UnionDecl[] unions;
+    StructDecl[] structs;
     VarDecl[] fields;
     FnDecl[] functions;
     bool fromGeneric;
 
-    this(string name, VarDecl[] fields, FnDecl[] functions, string[] genericT, Position pos, bool fromGeneric = false)
+    this(string name, VarDecl[] fields, FnDecl[] functions, 
+       UnionDecl[] unions, StructDecl[] structs, string[] genericT, Position pos, bool fromGeneric = false)
     {
         super(NodeKind.StructDecl, pos);
         this.name = name;
@@ -951,6 +957,9 @@ class StructDecl : Node
         this.functions = functions;
         this.genericT = genericT;
         this.fromGeneric = fromGeneric;
+        this.structs = structs;
+        this.unions = unions;
+        this.type_expr = new TypeExprUser(TypeExprKind.Struct, name, pos);
     }
 
     override void print(uint indent)
@@ -970,7 +979,17 @@ class StructDecl : Node
         foreach (fn; functions)
             functionsCopy ~= (fn is null ? null : fn.dup());
 
-        auto n = new StructDecl(name, fieldsCopy, functionsCopy, (string[]).init, pos, fromGeneric);
+        StructDecl[] structsCopy;
+        structsCopy.reserve(structs.length);
+        foreach (st; structs)
+            structsCopy ~= (st is null ? null : st.dup());
+
+        UnionDecl[] unionsCopy;
+        unionsCopy.reserve(unions.length);
+        foreach (un; unions)
+            unionsCopy ~= (un is null ? null : un.dup());
+
+        auto n = new StructDecl(name, fieldsCopy, functionsCopy, unions, structs, (string[]).init, pos, fromGeneric);
         if (!fromGeneric)
             n.fromGeneric = genericT.length > 0;
         n.kind = kind;
@@ -1058,13 +1077,15 @@ class IfStmt : Node
     Node expr;
     Node[] body;
     IfStmt _else;
+    bool isElse;
 
-    this(Node expr, Node[] body, IfStmt _else, Position pos)
+    this(Node expr, Node[] body, IfStmt _else, bool isElse, Position pos)
     {
         super(NodeKind.IfStmt, pos);
         this.expr = expr;
         this.body = body;
         this._else = _else;
+        this.isElse = isElse;
     }
 
     override void print(uint indent)
@@ -1078,6 +1099,7 @@ class IfStmt : Node
             expr is null ? null : cast(Node) expr.dup(),
             dupArr(body),
             _else is null ? null : _else.dup(),
+            isElse,
             pos
         );
         n.kind = kind;
@@ -1248,6 +1270,7 @@ class EnumDecl : Node
         super(NodeKind.EnumDecl, pos);
         this.name = name;
         this.fields = fields;
+        this.type_expr = new TypeExprUser(TypeExprKind.Enum, name, pos);
     }
 
     override void print(uint indent)
@@ -1283,6 +1306,7 @@ class UnionDecl : Node
         super(NodeKind.UnionDecl, pos);
         this.name = name;
         this.fields = fields;
+        this.type_expr = new TypeExprUser(TypeExprKind.Union, name, pos);
     }
 
     override void print(uint indent)
@@ -1476,6 +1500,188 @@ class RawStmt : Node
     override void subGeneric(string[] names, TypeExpr[] types)
     {
         //
+    }
+}
+
+class SwitchStmt : Node
+{
+    Node expr;
+    CaseStmt[] cases;
+
+    this(Node expr, CaseStmt[] cases, Position pos)
+    {
+        super(NodeKind.SwitchStmt, pos);
+        this.expr = expr;
+        this.cases = cases;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "SwitchStmt");
+        if (expr !is null)
+            expr.print(indent + 1);
+        foreach (c; cases)
+            c.print(indent + 1);
+    }
+
+    override SwitchStmt dup()
+    {
+        CaseStmt[] casesCopy;
+        casesCopy.reserve(cases.length);
+        foreach (c; cases)
+            casesCopy ~= (c is null ? null : c.dup());
+
+        auto n = new SwitchStmt(
+            expr is null ? null : cast(Node) expr.dup(),
+            casesCopy,
+            pos
+        );
+        n.kind = kind;
+        n.type_expr = type_expr is null ? null : type_expr.dup();
+        return n;
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        if (expr !is null)
+            expr.subGeneric(names, types);
+        foreach (c; cases)
+        {
+            if (c !is null)
+                c.subGeneric(names, types);
+        }
+    }
+}
+
+class CaseStmt : Node
+{
+    Node value; // null se for 'default'
+    bool hasVar;
+    Node[] body;
+
+    this(Node value, bool hasVar, Node[] body, Position pos)
+    {
+        super(NodeKind.CaseStmt, pos);
+        this.value = value;
+        this.body = body;
+        this.hasVar = hasVar;
+    }
+
+    override void print(uint indent)
+    {
+        if (value is null)
+            iprint(indent, "CaseStmt default");
+        else
+        {
+            iprint(indent, "CaseStmt");
+            value.print(indent + 1);
+        }
+        foreach (stmt; body)
+            stmt.print(indent + 1);
+    }
+
+    override CaseStmt dup()
+    {
+        auto n = new CaseStmt(
+            value is null ? null : cast(Node) value.dup(),
+            hasVar,
+            dupArr(body),
+            pos
+        );
+        n.kind = kind;
+        n.type_expr = type_expr is null ? null : type_expr.dup();
+        return n;
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        if (value !is null)
+            value.subGeneric(names, types);
+        subGenericArr(body, names, types);
+    }
+}
+
+class TypeNameExpr : Node
+{
+    Node expr;
+
+    this(Node expr, Position pos)
+    {
+        super(NodeKind.TypeNameExpr, pos);
+        this.expr = expr;
+        type_expr = new TypeExprPointer(new TypeExprNamed("char", pos), pos);
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "TypeNameExpr");
+    }
+
+    override TypeNameExpr dup()
+    {
+        return new TypeNameExpr(expr.dup(), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        expr.subGeneric(names, types);
+    }
+}
+
+class TTypeExpr : Node
+{
+    TypeExpr type;
+
+    this(TypeExpr expr, Position pos)
+    {
+        super(NodeKind.TTypeExpr, pos);
+        this.type = expr;
+        type_expr = new TypeExprPointer(new TypeExprNamed("char", pos), pos);
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "TTypeExpr");
+    }
+
+    override TTypeExpr dup()
+    {
+        return new TTypeExpr(type.dup(), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type = subGenericType(type, names, types);
+    }
+}
+
+class IsExpr : Node
+{
+    TypeExpr left, right;
+    this(TypeExpr left, TypeExpr right, Position pos)
+    {
+        super(NodeKind.IsExpr, pos);
+        this.left = left;
+        this.right = right;
+        type_expr = new TypeExprNamed("int", pos);
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "IsExpr");
+    }
+
+    override IsExpr dup()
+    {
+        return new IsExpr(left.dup(), right.dup(), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        left = subGenericType(left, names, types);
+        right = subGenericType(right, names, types);
     }
 }
 

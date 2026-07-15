@@ -38,7 +38,7 @@ public:
         this.p = p;
     }
 
-    Node nud()
+    Node nud(bool label)
     {
         Token tk = p.advance();
         switch (tk.kind)
@@ -85,16 +85,24 @@ public:
             if (isType && looksLikeTypeStart(p.peek().kind))
             {
                 p.previous2(); // volta o advance feito
+                // writeln(p.peek().pos.toString());
                 TypeExpr type = p.parseType.parse();
                 if (p.match(TokenKind.Dot))
                     return parseMemberExpr(new IdentExpr(type.toStr(), type, type.pos));
+                if (!p.check(TokenKind.Id))
+                {
+                    p.err.error(p.getPos(tk.pos, p.peek().pos), "The type is being used out of context.");
+                    return new IdentExpr(type.toString(), type, type.pos);
+                }
                 Token name = p.consume(TokenKind.Id, "Expected an 'ID' after the type.");
                 if (p.check(TokenKind.LParen))
                     return p.parseDecl.parseFnDecl(type, name, false);
-                return p.parseDecl.parseVarDecl(type, name);
+                if (p.check(TokenKind.Equals) || p.check(TokenKind.SemiColon))
+                    return p.parseDecl.parseVarDecl(type, name);
             }
-            if (p.match(TokenKind.Colon))
-                return p.parseStmt.parseLabelStmt(tk);
+            if (label)
+                if (p.match(TokenKind.Colon))
+                    return p.parseStmt.parseLabelStmt(tk);
             TypeExpr type = null;
             if (tk.s in p.vars)
                 type = p.vars[tk.s];
@@ -152,6 +160,26 @@ public:
             TypeExpr expr = p.parseType.parse();
             Position end = p.consume(TokenKind.RParen, "Expected ')'.").pos;
             return new SizeOfExpr(expr, p.getPos(tk.pos, end));
+
+        case TokenKind.TypeName:
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node expr = parse();
+            Position end = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new TypeNameExpr(expr, p.getPos(tk.pos, end));
+
+        case TokenKind.Type:
+            p.consume(TokenKind.LParen, "Expected '('.");
+            TypeExpr expr = p.parseType.parse();
+            Position end = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new TTypeExpr(expr, p.getPos(tk.pos, end));
+
+        case TokenKind.Is:
+            p.consume(TokenKind.LParen, "Expected '('.");
+            TypeExpr left = p.parseType.parse();
+            p.consume(TokenKind.Comma, "Expected ','.");
+            TypeExpr right = p.parseType.parse();
+            Position end = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new IsExpr(left, right, p.getPos(tk.pos, end));
 
         case TokenKind.LParen:
             return parseCastOrNode(tk.pos);
@@ -484,9 +512,9 @@ public:
         }
     }
 
-    Node parse(Precedence pre = Precedence.Low)
+    Node parse(Precedence pre = Precedence.Low, bool label = false)
     {
-        Node left = nud();
+        Node left = nud(label);
         while (!p.isAtEnd() && pre < getPrecedence(p.peek().kind))
             left = led(left);
         return left;

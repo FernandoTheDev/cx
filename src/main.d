@@ -195,7 +195,7 @@ int main(string[] argv)
 	catch (Exception e)
 	{
 		writefln("An internal error occurred in the parser: %s", e.message);
-		// writeln(e);
+		if (dbg) writeln(e);
 		return 1;
 	}
 
@@ -207,6 +207,9 @@ int main(string[] argv)
 	new TypeResolver(registry).resolve(program);
 
 	program.body = ResolveSymbols.resolve(err, ctx, program.body);
+	check_diagnostic(err);
+
+	new StructOrder(err).resolve(program);
 	check_diagnostic(err);
 
 	string fileh = output ~ (cpp ? ".hpp" : ".h");

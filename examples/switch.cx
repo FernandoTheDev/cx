@@ -1,0 +1,24 @@
+//! Bar\n
+import std.io;
+
+enum Foo {
+    Bar,
+    Foo,
+    Fer
+}
+
+int main() {
+    Foo x = Foo.Bar;
+    switch x {
+        case Foo.Foo:
+            printf("Foo\n");
+            break;
+        case Foo.Fer:
+            int test = 0;
+            break;
+        default:
+            printf("Bar\n");
+            break;
+    }
+    return 0;
+}

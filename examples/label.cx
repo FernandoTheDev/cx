@@ -1,0 +1,26 @@
+//! 67\n
+import std.lib;
+import std.io;
+
+struct Bar {
+    int* data;
+}
+
+struct Foo {
+    Bar* bar;
+}
+
+int main() {
+entry:
+    Bar* bar = calloc(1, sizeof(Bar));
+    bar.data = calloc(1, sizeof(int));
+    *bar.data = 67;
+    
+    defer free(bar);
+    defer free(bar.data);
+
+    Foo f = {bar};
+    printf("%d\n", *f.bar.data);
+
+    return 0;
+}

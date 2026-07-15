@@ -1,4 +1,4 @@
 module env;
 
-const string COMPILER_VERSION = "0.1.2";
+const string COMPILER_VERSION = "0.2.0";
 const string GITHUB_REPO = "https://github.com/FernandoTheDev/cx.git";

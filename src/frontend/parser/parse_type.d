@@ -5,6 +5,7 @@ import frontend.lexer;
 import frontend;
 
 import std.exception;
+import std.stdio;
 import std.conv;
 
 class ParseType
@@ -82,12 +83,29 @@ public:
     TypeExpr parseGenericType(TypeExpr name, Position pos)
     {
         TypeExpr[] args;
-        while (!p.isAtEnd() && !p.check(TokenKind.GThan))
+        
+        while (!p.isAtEnd() && !p.check(TokenKind.GThan) && !p.check(TokenKind.BITRight))
         {
+            // writeln("LOOP: ");
             args ~= parse();
-            if (!p.check(TokenKind.GThan))
+            // writeln("ARGS: ", args);
+            if (!p.check(TokenKind.GThan) && !p.check(TokenKind.BITRight))
+            {
+                // writeln("PEEK: ", p.peek().kind);
                 p.consume(TokenKind.Comma, "Expected ','.");
+            }
         }
+        if (p.check(TokenKind.BITRight))
+        {
+            // divide
+            // writeln("Tenta dividir.");
+            Token[] tokens = p.tokens[0 .. p.offset];
+            tokens ~= new Token(TokenKind.GThan, pos);
+            tokens ~= new Token(TokenKind.GThan, pos);
+            tokens ~= p.tokens[p.offset + 1 .. $];
+            p.tokens = tokens;
+        }
+
         p.consume(TokenKind.GThan, "Expected '>'.");
         string n = name.toStr();
         p.generic.add(n, args);
@@ -97,6 +115,9 @@ public:
 
     TypeExpr checkAfter(TypeExpr type)
     {
+        if (p.isAtEnd())
+            return type;
+
         if (p.match(TokenKind.Star))
             return parsePointerType(type, type.pos);
 

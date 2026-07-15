@@ -20,6 +20,7 @@ private:
     bool genHeaderFile;
     string headerFile;
     ImportResolverContext* context;
+    bool onLabel, deferOnLabel;
 
     bool[string] errorUnions;
     bool fnErrorUnion; // diz se a função atual retorna uma errorUnion
@@ -34,6 +35,7 @@ private:
     string[] cxHeader = [];
     string[] typedefs;
     string[] data;
+    string[] unionErrors;
     string[] protos;
     string[] source;
 
@@ -81,6 +83,11 @@ private:
             code ~= "\n\n/* Data */\n";
             code ~= data.join("\n");
         }
+        if (unionErrors.length > 0)
+        {
+            code ~= "\n\n/* Union Errors */\n";
+            code ~= unionErrors.join("\n");
+        }
         if (protos.length > 0)
         {
             code ~= "\n\n/* Prototypes */\n";
@@ -125,13 +132,15 @@ private:
             return;
 
         case NodeKind.StructDecl:
-            return compileStructDecl(as!StructDecl(node), ind);
+            compileStructDecl(as!StructDecl(node), ind);
+            return;
 
         case NodeKind.EnumDecl:
             return compileEnumDecl(as!EnumDecl(node), ind);
 
         case NodeKind.UnionDecl:
-            return compileUnionDecl(as!UnionDecl(node), ind);
+            compileUnionDecl(as!UnionDecl(node), ind);
+            return;
 
         case NodeKind.AliasDecl:
         case NodeKind.ImportStmt:
@@ -147,15 +156,18 @@ private:
         }
     }
 
-    void compileUnionDecl(UnionDecl node, uint ind)
+    string compileUnionDecl(UnionDecl node, uint ind, bool anon = false)
     {
         string name = node.name;
-        typedefs ~= format("typedef union %s %s;", name, name);
-        string _data = format("union %s\n{\n", name);
+        if (!anon)
+            typedefs ~= format("typedef union %s %s;", name, name);
+        string _data = format("union %s\n{\n", anon ? "" : name);
         foreach (string field, TypeExpr type; node.fields)
             _data ~= indent(format("%s %s;\n", type.toString(), field), ind + 4);
-        _data ~= "};\n";
-        data ~= _data;
+        _data ~= format("} %s;\n", anon ? name : "");
+        if (!anon)
+            data ~= _data;
+        return _data;
     }
 
     void compileEnumDecl(EnumDecl node, uint ind)
@@ -227,14 +239,43 @@ private:
 
         case NodeKind.LabelStmt:
             LabelStmt n = cast(LabelStmt) node;
+            deferOnLabel = false;
+            bool on = onLabel;
+            onLabel = true;
             emit(format("%s:", n.name), ind);
             foreach (Node _; n.body)
                 emit(compileStmt(_, ind), ind);
+            onLabel = on;
             return "";
 
         case NodeKind.RawStmt:
             RawStmt n = cast(RawStmt) node;
             return indent("/* raw block */", ind) ~ n.code;
+
+        case NodeKind.CaseStmt:
+            CaseStmt c = cast(CaseStmt) node;
+            emit(format("%s:", c.value is null ? "default" : format("case %s", compileExpr(c.value))), ind);
+            if (c.hasVar)
+                emit("{", ind);
+            bool haveBraces;
+            foreach (Node n; c.body)
+            {
+                if (n.kind == NodeKind.VarDecl)
+                    haveBraces = true;
+                emit(compileStmt(n, ind), ind-4);
+            }
+            if (c.hasVar)
+                emit("}", ind);
+            return "";
+        
+        case NodeKind.SwitchStmt:
+            SwitchStmt s = cast(SwitchStmt) node;
+            emit(format("switch(%s)", compileExpr(s.expr)), ind);
+            emit("{", ind);
+            foreach (CaseStmt c; s.cases)
+                emit(compileStmt(cast(Node) c, ind + 4), ind);
+            emit("}", ind);
+            return "";
 
         default:
             return indent("/* invalid stmt */", ind);
@@ -407,6 +448,8 @@ private:
                 if (n.type_expr !is null && n.type_expr.kind == TypeExprKind.Array)
                     haveComptimeArray = true;
                 values ~= compileExpr(n);
+                if (n.kind == NodeKind.AssignStmt)
+                    values[$-1] = "." ~ values[$-1];
             }
 
             TypeExpr type = strc.type_expr is null ? null : strc.type_expr;
@@ -483,6 +526,20 @@ private:
             SizeOfExpr sz = cast(SizeOfExpr) node;
             return format("sizeof(%s)", sz.type_expr.toString());
 
+        case NodeKind.TypeNameExpr:
+            TypeNameExpr tn = cast(TypeNameExpr) node;
+            return compileExpr(new StringLit(tn.expr.type_expr.toStr(), tn.pos));
+
+        case NodeKind.TTypeExpr:
+            TTypeExpr tn = cast(TTypeExpr) node;
+            return compileExpr(new StringLit(tn.type.toStr(), tn.pos));
+
+        case NodeKind.IsExpr:
+            IsExpr tn = cast(IsExpr) node;
+            // writeln("left: ", tn.left.toStr());
+            // writeln("right: ", tn.right.toStr());
+            return format("%s", tn.left.toStr() == tn.right.toStr() ? "true" : "false");
+
         default:
             return "/* invalid expr */";
         }
@@ -501,14 +558,15 @@ private:
 
     string compileIfStmt(IfStmt node, uint ind)
     {
-        if (node.expr !is null)
+        string code = format("if (%s)", node.expr !is null ? compileExpr(node.expr) : "");
+        if (!node.isElse)
         {
-            emit(format("if (%s)", compileExpr(node.expr)), ind);
+            emit(code, ind);
             emitBody(node.body, ind);
         }
         else
         {
-            emit("else", ind);
+            emit(format("else %s", node.expr !is null ? code : ""), ind);
             emitBody(node.body, ind);
         }
         if (node._else !is null)
@@ -696,6 +754,8 @@ private:
         // emit(format("struct %s {", name), ind);
         foreach (VarDecl var; node.fields)
             _data ~= compileVarDecl(var, ind + 4) ~ "\n";
+        foreach (UnionDecl un; node.unions)
+            _data ~= compileUnionDecl(un, ind, true);
         _data ~= "};\n";
         data ~= _data;
         foreach (FnDecl fn; node.functions)
@@ -738,6 +798,7 @@ private:
         bool cond = fn.type_expr.kind == TypeExprKind.Function;
         string name = cond ? format("%s(%s)", fn.name, args) : fn.name;
         name = clearNameMangling(name);
+        
         // writeln("FUNC NAME: ", name);
         string proto = format("%s%s", 
                 /* proto */ 
@@ -746,10 +807,7 @@ private:
                 : name),
                 /* args */ 
                 cond ? "" : format("(%s)", args));
-    // string proto = format("%s%s", fn.type_expr.toStrVar(isMethod ? format("%s_%s", methodType, name)
-    //             : name),
-    //         cond ? "" : format("(%s)", args));
-        // string proto = format("%s(%s)", , args);
+
         protos ~= proto ~ ";";
         emit(proto, ind);
         emit("{", ind);
@@ -768,7 +826,7 @@ private:
                 // adiciona no data para gerar depois, assim como o typedef
                 errorUnions[fnUnion] = true;
                 typedefs ~= format("typedef struct %s %s;", fnUnion, fnUnion);
-                data ~= format("struct %s { bool valid; union { %s ok; %s error; } val; };", fnUnion,
+                unionErrors ~= format("struct %s { bool valid; union { %s ok; %s error; } val; };", fnUnion,
                     res.ok.toStr(), res.error.toStr());
             }
         }
@@ -782,7 +840,7 @@ private:
                 break;
             }
         }
-        if (!hasReturn)
+        if (!hasReturn && !deferOnLabel)
             deferResolve(ind+4);
         fnErrorUnion = error;
         emit("}\n", ind);
@@ -792,6 +850,8 @@ private:
     {
         if (defer.length == 0)
             return;
+        if (onLabel)
+            deferOnLabel = true;
         // comportamento LIFO
         foreach_reverse (string def; defer)
             emit(def, ind);

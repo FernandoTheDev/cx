@@ -8,6 +8,12 @@ enum TokenKind : ubyte
     Include,
 
     // keywords
+    Is,
+    Type,
+    TypeName,
+    Case,
+    Default,
+    Switch,
     Register,
     Raw,
     Atomic,

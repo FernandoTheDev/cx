@@ -157,6 +157,9 @@ class Parser
         case TokenKind.Import:
         case TokenKind.Goto:
         case TokenKind.Raw:
+        case TokenKind.Switch:
+        case TokenKind.Case:
+        case TokenKind.Default:
             return true;
         default:
             return false;
@@ -186,7 +189,7 @@ class Parser
         else if (isStmt())
             node = parseStmt.parse();
         else
-            node = parseExpr.parse();
+            node = parseExpr.parse(Precedence.Low, true);
         checkSemiColon(node);
         return node;
     }
