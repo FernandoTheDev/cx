@@ -119,6 +119,7 @@ class Generic
                 StructDecl n = s.dup();
                 n.name = mangled;
                 n.subGeneric(genericT, types);
+                // Node[] body = n ~ program.body;
                 program.body ~= n;
             }
         }

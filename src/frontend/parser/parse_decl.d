@@ -119,6 +119,8 @@ public:
         p.consume(TokenKind.LBrace, "Expected '{'.");
         VarDecl[] fields;
         FnDecl[] functions;
+        StructDecl[] structs;
+        UnionDecl[] unions;
 
         // registra os tipos temporariamente
         foreach (string T; genericT)
@@ -126,23 +128,31 @@ public:
 
         while (!p.isAtEnd() && !p.check(TokenKind.RBrace))
         {
-            bool isStatic = p.match(TokenKind.Static);
-            TypeExpr type = p.parseType.parse();
-            Token name = p.consume(TokenKind.Id, "Expected an 'ID'.");
-            if (p.check(TokenKind.LParen))
+            if (p.check(TokenKind.Union))
             {
-                functions ~= cast(FnDecl)parseFnDecl(type, name, isStatic, genericT.length > 0 ? "" : sname.s);
-                // if (functions[$-1].flags & NodeFlags.Overload)
-                //     functions[$-1].name = sname.s ~ "_" ~ functions[$-1].name;
+                unions ~= cast(UnionDecl) parseUnionDecl(p.advance().pos); 
+                p.match(TokenKind.SemiColon);
             }
-            else
-                fields ~= cast(VarDecl)parseVarDecl(type, name, true);
+            else {
+                bool isStatic = p.match(TokenKind.Static);
+                TypeExpr type = p.parseType.parse();
+                Token name = p.consume(TokenKind.Id, "Expected an 'ID'.");
+                if (p.check(TokenKind.LParen))
+                {
+                    functions ~= cast(FnDecl)parseFnDecl(type, name, isStatic, genericT.length > 0 ? "" : sname.s);
+                    // if (functions[$-1].flags & NodeFlags.Overload)
+                    //     functions[$-1].name = sname.s ~ "_" ~ functions[$-1].name;
+                }
+                else
+                    fields ~= cast(VarDecl)parseVarDecl(type, name, true);
+            }
         }
 
         foreach (string T; genericT)
             p.types.remove(T);
 
-        Node node = new StructDecl(sname.s, fields, functions, genericT, p.getPos(pos, sname.pos));
+        Node node = new StructDecl(sname.s, fields, functions, unions, structs, genericT, 
+            p.getPos(pos, sname.pos));
         if (genericT.length > 0)
         {
             p.generic.set(sname.s, node);

@@ -18,21 +18,17 @@ struct Value {
 
     static Value mkInt(i32 val)
     {
-        ValueRaw r;
-        r.i = val;
         return (Value) { 
             ValueType.Int,
-            r
+            (ValueRaw) {i = val}
         };
     }
 
     static Value mkFloat(f32 val)
     {
-        ValueRaw r;
-        r.f = val;
         return (Value) { 
             ValueType.Float,
-            r
+            (ValueRaw) {f = val}
         };
     }
 }

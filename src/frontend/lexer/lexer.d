@@ -26,6 +26,12 @@ private:
     uint line = 1;
 
     TokenKind[string] keywords = [
+        "__is": TokenKind.Is,
+        "__type": TokenKind.Type,
+        "__typename": TokenKind.TypeName,
+        "default": TokenKind.Default,
+        "switch": TokenKind.Switch,
+        "case": TokenKind.Case,
         "register": TokenKind.Register,
         "_Atomic": TokenKind.Atomic,
         "restrict": TokenKind.Restrict,

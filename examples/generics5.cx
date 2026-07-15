@@ -1,0 +1,20 @@
+//! int\nFoo<Foo<float>>\nUnknown type: Foo_Foo_Foo_double\n
+import std.io;
+
+struct Foo<T> {
+    static void bar() {
+        if __is(T, int)
+            printf("int\n");
+        else if __is(Foo<T>, Foo<Foo<float>>)
+            printf("Foo<Foo<float>>\n");
+        else
+            printf("Unknown type: %s\n", __type(Foo<T>));
+    }
+}
+
+int main() {
+    Foo<int>.bar();
+    Foo<Foo<float>>.bar();
+    Foo<Foo<Foo<double>>>.bar();
+    return 0;
+}

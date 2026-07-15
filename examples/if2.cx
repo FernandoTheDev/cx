@@ -1,0 +1,10 @@
+//# 0
+int main() {
+    if 0 == 1
+        return 1;
+    else if 0 == 0
+        return 0;
+    else
+        return 67;
+    return 2;
+}

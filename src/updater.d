@@ -47,7 +47,7 @@ int runUpdate()
     string tagName = json["tag_name"].str;
     string remoteVersion = tagName.startsWith("v") ? tagName[1 .. $] : tagName;
 
-    if (remoteVersion < COMPILER_VERSION)
+    if (remoteVersion <= COMPILER_VERSION)
     {
         writefln("You are already on the latest version (%s).", COMPILER_VERSION);
         return 0;

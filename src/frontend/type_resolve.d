@@ -56,6 +56,8 @@ private:
 
     string baseName(TypeExpr t)
     {
+        if (t is null)
+            return "";
         return t.toStr();
     }
 
@@ -167,6 +169,10 @@ private:
             TypeExpr t = resolveExprType(ret.val, scp);
             return t;
 
+        case NodeKind.TypeNameExpr:
+            resolveExprType((cast(TypeNameExpr) n).expr, scp);
+            return n.type_expr;
+
         default:
             // já vêm com type_expr setado no próprio construtor
             return n.type_expr;
@@ -210,6 +216,7 @@ private:
         // caso normal: a.campo (ou a->campo)
         TypeExpr leftType = resolveExprType(m.left, scp);
         m.left.type_expr = leftType;
+        // writeln(m.left);
 
         string sName = baseName(leftType);
         TypeExpr fieldType = null;
@@ -245,6 +252,9 @@ private:
             else if (leftType !is null && leftType.kind == TypeExprKind.Enum)
                 // Tipo_CAMPO de enum: não tem "tipo de campo" per se, o próprio enum é o tipo
                 fieldType = leftType;
+            else if(field is null)
+                // pode ser Union ou Struct, ambos acessam usando '.'
+                fieldType = new TypeExprUser(TypeExprKind.Struct, "anon", m.pos);
         }
 
         // import std.conv;
@@ -325,6 +335,20 @@ private:
 
         case NodeKind.DeferStmt:
             resolveExprType((cast(DeferStmt) n).val, scp);
+            return;
+
+        case NodeKind.SwitchStmt:
+            SwitchStmt s = cast(SwitchStmt) n;
+            if (s.expr !is null)
+                resolveExprType(s.expr, scp);
+            resolveBody(cast(Node[]) s.cases, new Scope(scp));
+            return;
+
+        case NodeKind.CaseStmt:
+            CaseStmt c = cast(CaseStmt) n;
+            if (c.value !is null)
+                resolveExprType(c.value, scp);
+            resolveBody(c.body, new Scope(scp));
             return;
 
         case NodeKind.ContinueOrBreakStmt:

@@ -1,0 +1,9 @@
+struct Box<V> {
+    V value;
+    bool hasValue;
+
+    static Box<V> empty() => (Box<V>) {hasValue = false}
+    static Box<V> of(V val) => (Box<V>) {val, true}
+    V unwrap() => self.value
+    bool isEmpty() => !self.hasValue
+}

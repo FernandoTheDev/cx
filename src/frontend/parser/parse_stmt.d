@@ -47,7 +47,7 @@ public:
         if (!p.isAtEnd() && p.check(TokenKind.Else))
             _else = cast(IfStmt) parseIfStmt(p.advance().pos, true);
 
-        return new IfStmt(expr, body, _else, pos);
+        return new IfStmt(expr, body, _else, isElse, pos);
     }
 
     Node parseReturnStmt(Position pos)
@@ -147,6 +147,45 @@ public:
         return "";
     }
 
+    Node parseSwitchStmt(Position pos)
+    {
+        Node expr = p.parseExpr.parse();
+        p.consume(TokenKind.LBrace, "Expected '{'.");
+        CaseStmt[] cases;
+        while (!p.isAtEnd() && !p.check(TokenKind.RBrace))
+        {
+            Node node = p.parseStmt.parse();
+            if (node.kind != NodeKind.CaseStmt)
+            {
+                p.err.error(node.pos, "Invalid case on switch statement.");
+                continue;
+            }
+            cases ~= cast(CaseStmt) node;
+        }
+        p.consume(TokenKind.RBrace, "Expected '}'.");
+        return new SwitchStmt(expr, cases, pos);
+    }
+
+    Node parseCaseStmt(Position pos, bool isDefault)
+    {
+        Node value = isDefault ? null : p.parseExpr.parse();
+        p.consume(TokenKind.Colon, "Expected ':' after case statement.");
+        Node[] body;
+        bool close, hasVar;
+        while (!p.isAtEnd() && !close && !p.check(TokenKind.Case) && !p.check(TokenKind.Default))
+        {
+            if (p.check(TokenKind.RBrace))
+                break;
+            Node node = p.parseIntern();
+            if (node.kind == NodeKind.ContinueOrBreakStmt || node.kind == NodeKind.ReturnStmt)
+                close = true;
+            if (node.kind == NodeKind.VarDecl)
+                hasVar = true;
+            body ~= node;
+        }
+        return new CaseStmt(value, hasVar, body, pos);
+    }
+
     Node parse()
     {
         Token tk = p.advance();
@@ -179,6 +218,13 @@ public:
 
         case TokenKind.Raw:
             return new RawStmt(tk.s, tk.pos);
+
+        case TokenKind.Switch:
+            return parseSwitchStmt(tk.pos);
+
+        case TokenKind.Case:
+        case TokenKind.Default:
+            return parseCaseStmt(tk.pos, tk.kind == TokenKind.Default);
 
         default:
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);

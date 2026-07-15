@@ -1,0 +1,17 @@
+//! Foo\nBar\n
+import std.io;
+
+enum Foo {
+    Bar
+}
+
+struct Bar {
+    Foo f;
+}
+
+int main() {
+    Bar b = {Foo.Bar};
+    printf("%s\n", __typename(b.f));
+    printf("%s\n", __typename(b));
+    return 0;
+}

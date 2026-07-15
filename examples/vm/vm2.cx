@@ -1,0 +1,123 @@
+//! 67\n
+import std.stack;
+import std.array;
+import std.lib;
+import std.io;
+
+enum OpCode {
+    Push,
+    Add,
+    Print,
+    Halt,
+}
+
+char* opCodeToStr(OpCode op)
+{
+    if op == OpCode.Push return "Push";
+    if op == OpCode.Add return "Add";
+    if op == OpCode.Print return "Print";
+    if op == OpCode.Halt return "Halt";
+    return "Invalid OpCode";
+}
+
+struct Instruction {
+    OpCode op;
+    VMValue value;
+}
+
+enum VMType {
+    Int,
+    Float,
+}
+
+struct VMValue {
+    VMType type;
+    union value {
+        long i;
+        float f;
+    };
+    static VMValue mkInt(long i) => (VMValue) {VMType.Int, value.i = i}
+    static VMValue mkFloat(float i) => (VMValue) {VMType.Float, value.f = i}
+}
+
+alias SValue = VMValue!StackError
+
+struct VM 
+{
+    Array<Instruction> program;
+    Stack<VMValue> stack;
+    u32 offset;
+
+    static VM new(Array<Instruction> program) => (VM) { program, Stack<VMValue>.new(8), 0 }
+
+    void run() {
+        while self.offset < self.program.size
+        {
+            Instruction instr = self.program.get(self.offset++).ok;
+            switch instr.op {
+                case OpCode.Push:
+                    self.stack.push(instr.value);
+                    continue;
+
+                case OpCode.Add:
+                    SValue r = self.stack.pop();
+                    SValue l = self.stack.pop();
+                    
+                    if !r.valid { printf("Error: %d\n", r.error); return; }
+                    if !l.valid { printf("Error: %d\n", l.error); return; }
+                    
+                    VMValue r2 = r.ok;
+                    VMValue l2 = l.ok;
+                    
+                    if r2.type == VMType.Int
+                        r2.value.i += l2.value.i;
+                    else if r2.type == VMType.Float
+                        r2.value.f += l2.value.f;
+                    else {
+                        printf("Invalid operands.\n");
+                        return;
+                    }
+                    
+                    self.stack.push(r2);
+                    continue;
+
+                case OpCode.Halt:
+                    return;
+
+                case OpCode.Print:
+                    VMValue v = self.stack.pop().ok;
+                    if v.type == VMType.Int
+                        printf("%lld\n", v.value.i);
+                    else
+                        printf("%f\n", v.value.f);
+                    return;
+                
+                default:
+                    printf("Invalid opcode '%s'.\n", opCodeToStr(instr.op));
+                    continue;
+            }
+        }
+    }
+
+    void free() {
+        self.program.free();
+        self.stack.free();
+    }
+}
+
+int main() {
+    Array<Instruction> program = Array<Instruction>.new(10);
+    
+    program.push((Instruction) {OpCode.Push, VMValue.mkInt(60)});
+    program.push((Instruction) {OpCode.Push, VMValue.mkInt(7)});
+    program.push((Instruction) {OpCode.Add});
+    program.push((Instruction) {OpCode.Print});
+    program.push((Instruction) {OpCode.Halt});
+    
+    VM vm = VM.new(program);
+    defer vm.free();
+    
+    vm.run();
+    
+    return 0;
+}
