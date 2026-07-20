@@ -3,8 +3,8 @@ import std.string;
 import std.io;
 
 int main() {
-    String s1 = String.from("Fernando");
-    String s2 = String.from(" the ");
+    String s1 = .from("Fernando");
+    String s2 = .from(" the ");
 
     defer s1.free();
     defer s2.free();

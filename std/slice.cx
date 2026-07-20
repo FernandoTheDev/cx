@@ -1,0 +1,25 @@
+import std.string;
+import std.lib;
+
+struct Slice<T> {
+    T* ptr;
+    u32 length;
+    bool owned;
+
+    static Slice<T> of(T* data, u32 start, u32 end) => .{data + start, end - start, false}
+
+    static Slice<T> copyOf(T* data, u32 start, u32 end) {
+        u32 len = end - start;
+        T* newData = malloc(sizeof(T) * len);
+        memcpy(newData, data + start, sizeof(T) * len);
+        return .{newData, len, true};
+    }
+
+    bool cmp(T* other) => memcmp(self.ptr, other, self.length) == 0
+    T get(u32 idx) => self.ptr[idx]
+
+    void free() {
+        if self.owned
+            free(self.ptr);
+    }
+}

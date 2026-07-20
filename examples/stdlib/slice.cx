@@ -1,0 +1,20 @@
+//! view[0]: 20\nfoo: 3.000000\n
+import std.slice;
+import std.io;
+
+Slice<float> foo() {
+    float[] f = [0f, 2f, 3f, 1f, 4f];
+    return f[2...3]; // heap
+}
+
+int main() {
+    int[5] arr = [10, 20, 30, 40, 50];
+    Slice<int> view = arr[1..2]; // Slice<int>.of(arr, 1, 2);
+    printf("view[0]: %d\n", view.get(0));
+
+    Slice<float> f = foo();
+    defer f.free();
+    printf("foo: %f\n", f.get(0));
+    
+    return 0;
+}

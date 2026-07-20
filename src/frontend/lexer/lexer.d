@@ -29,6 +29,8 @@ private:
         "__is": TokenKind.Is,
         "__type": TokenKind.Type,
         "__typename": TokenKind.TypeName,
+
+        "foreach": TokenKind.ForEach,
         "default": TokenKind.Default,
         "switch": TokenKind.Switch,
         "case": TokenKind.Case,
@@ -68,12 +70,14 @@ private:
         "}": TokenKind.RBrace,
         "[": TokenKind.LBracket,
         "]": TokenKind.RBracket,
+        
+        ".": TokenKind.Dot,
+        "..": TokenKind.Range,
         "...": TokenKind.Ellipsis,
 
         ",": TokenKind.Comma,
         ":": TokenKind.Colon,
         ";": TokenKind.SemiColon,
-        ".": TokenKind.Dot,
         "@": TokenKind.At,
 
         "+": TokenKind.Plus,
@@ -96,6 +100,8 @@ private:
         "&&": TokenKind.And,
         "||": TokenKind.Or,
         "?": TokenKind.Question,
+        "??": TokenKind.QQuestion,
+        "?.": TokenKind.QDot,
 
         "+=": TokenKind.PLUSEquals,
         "-=": TokenKind.MINUSEquals,
@@ -247,7 +253,7 @@ private:
     void lexDecimal(String buffer, out bool isDouble)
     {
         lexNumber(buffer);
-        if (check('.'))
+        if (!isAtEnd(1) && check('.') && isNumeric(future(1)))
         {
             isDouble = true;
             buffer ~= [advance()];

@@ -3,12 +3,12 @@ import std.hashmap;
 import std.io;
 
 int main() { 
-    HashMap<int> map = HashMap<int>.new(16); 
-    defer map.delete(); 
+    HashMap<int> map = .new(16); 
+    defer map.free(); 
 
     map.set("age", 18); 
     map.set("year", 2026); 
-    map.set("port", 8080); 
+    map.set("port", 8080);
 
     Box<int> age = map.get("age"); 
     if !age.isEmpty()

@@ -1,0 +1,10 @@
+//# 0
+
+enum Foo {
+    Bar,
+}
+
+int main() {
+    Foo f = .Bar;
+    return f;
+}
