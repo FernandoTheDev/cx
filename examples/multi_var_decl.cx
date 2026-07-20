@@ -1,0 +1,10 @@
+//# 67
+struct Foo {
+    float x, y;
+}
+
+int main() {
+    int x, y = 2, 7;
+    Foo f = {y = 10F, x = 20F};
+    return (x * (int)(f.x + f.y)) + y;
+}

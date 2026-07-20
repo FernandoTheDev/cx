@@ -206,7 +206,10 @@ int main(string[] argv)
 	// faz duas passagens pra resolução completa
 	generic.resolve(program);
 	generic.resolve(program);
-	new TypeResolver(registry).resolve(program);
+
+	TypeResolver resolver = new TypeResolver(registry, err);
+	resolver.resolve(program);
+	check_diagnostic(err);
 
 	program.body = ResolveSymbols.resolve(err, ctx, program.body);
 	check_diagnostic(err);
@@ -216,7 +219,7 @@ int main(string[] argv)
 
 	string fileh = output ~ (cpp ? ".hpp" : ".h");
 	string filec = output ~ (cpp ? ".cpp" : ".c");
-	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh, ctx, cpp).compile();
+	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh, ctx, cpp, resolver).compile();
 	check_diagnostic(err);
 	write(filec, src[0]);
 

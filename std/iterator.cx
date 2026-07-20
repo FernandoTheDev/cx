@@ -1,0 +1,5 @@
+struct Iterator<T> {
+    T* ptr;
+    size_t offset;
+    size_t length;
+}

@@ -1,3 +1,4 @@
+import std.iterator;
 import std.lib;
 
 enum ArrayError {
@@ -31,6 +32,8 @@ struct Array<T> {
             return ArrayError.NotFound;
         return self.data[offset];
     }
+
+    Iterator<T> iter() => .{self.data, 0, self.size}
 
     void free()
     {

@@ -7,20 +7,9 @@ struct String
     size_t length;
     bool owner;
 
-    static String from(char* str)
-    {
-        return (String) {str, str.length, false};
-    }
-
-    static String new(size_t cap)
-    {
-        return (String) {malloc(cap), cap, true};
-    }
-
-    char* data()
-    {
-        return self.ptr;
-    }
+    static String from(char* str) => .{str, str.length, false}
+    static String new(size_t cap) => .{malloc(cap), cap, true}
+    char* data() => self.ptr
 
     char* concat(char* other) overload
     {

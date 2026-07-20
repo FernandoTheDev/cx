@@ -14,8 +14,11 @@ final class CodeGen
 private:
     Program program;
     TypeRegistry types;
+    TypeResolver resolver;
+
     TypeExpr actualType;
     TypeExpr fnType;
+
     bool isFnStatic;
     bool genHeaderFile;
     string headerFile;
@@ -150,6 +153,10 @@ private:
             RawStmt n = cast(RawStmt) node;
             return emit(indent("/* raw block */", ind) ~ n.code, 0);
 
+        case NodeKind.VarDecl:
+            data ~= compileVarDecl(cast(VarDecl)node, 0);
+            return;
+
         default:
             emit("/* invalid decl */", ind);
             return;
@@ -277,6 +284,46 @@ private:
             emit("}", ind);
             return "";
 
+        case NodeKind.ForEachStmt:
+            ForEachStmt fe = cast(ForEachStmt) node;
+            
+            string sname = fe.value.type_expr.toStr();
+            string value = compileExpr(fe.value);
+
+            FnDecl iter = resolver.findMethod(sname, "iter");
+            string iterator = iter.type_expr.toString();
+            
+            string temp = format("__it%d", tmp++);
+            string it = format("%s %s = %s_iter(&%s);", iterator, temp, sname, value);
+
+            bool isRef = fe.v.kind == NodeKind.UnaryExpr;
+            string val = isRef ? compileExpr((cast(UnaryExpr) fe.v).val) : compileExpr(fe.v);
+
+            // writeln(sname);
+            // writeln(value);
+            // writeln(iterator);
+            // writeln(temp);
+            // writeln(it);
+            
+            emit(it, ind);
+            emit(format("for (;%s.offset < %s.length; %s.offset++)", temp, temp, temp), ind);
+            emit(format("{"), ind);
+            if (fe.k !is null)
+                emit(format("size_t %s = %s.offset;", compileExpr(fe.k), temp), ind);
+            emit(format("__typeof__(%s(%s.ptr)) %s = %s(%s.ptr[%s.offset]);", 
+               isRef ? "" : "*", temp, val, isRef ? "&" : "", temp, temp), ind+4);
+            foreach (Node n; fe.body)
+                emit(compileStmt(n, ind), ind);
+            emit(format("}"), ind);
+            
+            // Iterator<int> __it1 = arr.iter(); OK
+            // for (; __it1.offset < __it1.length; __it1.offset++) {
+            //     int n = __it1.ptr[__it1.offset];
+            //     num += n;
+            // }
+
+            return "";
+
         default:
             return indent("/* invalid stmt */", ind);
         }
@@ -402,8 +449,18 @@ private:
             BinaryExpr binary = cast(BinaryExpr) node;
             string left = compileExpr(binary.left);
             string right = compileExpr(binary.right);
-            if (isString(binary.left.type_expr) && isString(binary.right.type_expr) && binary.op == TokenKind.EEEquals)
-                return format("strcmp(%s, %s) == 0", left, right);
+            if (binary.op == TokenKind.EEEquals)
+            {
+                if (isString(binary.left.type_expr) && isString(binary.right.type_expr))
+                    return format("strcmp(%s, %s) == 0", left, right);
+                if (isStruct(binary.left.type_expr))
+                {
+                    string name = binary.left.type_expr.toStr();
+                    FnDecl fn = resolver.findMethod(name, "cmp");
+                    if (fn)
+                        return format("%s_cmp(&%s, %s)", name, left, right);
+                }
+            }
             return format("%s %s %s", left, getOp(binary.op), right);
 
         case NodeKind.UnaryExpr:
@@ -516,8 +573,24 @@ private:
             return format("(%s)%s", n.type_expr.toString(), compileExpr(n.expr));
 
         case NodeKind.IndexExpr:
-            IndexExpr idx = cast(IndexExpr) node;
-            return format("%s[%s]", compileExpr(idx.value), compileExpr(idx.idx));
+            IndexExpr idxExpr = cast(IndexExpr) node;
+            string val = compileExpr(idxExpr.value);
+            // writeln(idxExpr.idx);
+            // writeln(idxExpr.value);
+            // writeln("val: ", val);
+            if (RangeExpr range = cast(RangeExpr) idxExpr.idx)
+            {
+                string left = compileExpr(range.left);
+                string right = compileExpr(range.right);
+
+                if (range.left.kind == NodeKind.UnaryExpr)
+                    left = right ~ left;
+
+                return format("Slice_%s_%s(%s, %s, %s)", 
+                    idxExpr.value.type_expr.toStr(), range.isCopy ? "copyOf" : "of",
+                    val, left, right);
+            }
+            return format("%s[%s]", val, compileExpr(idxExpr.idx));
 
         case NodeKind.GroupExpr:
             return "(" ~ compileExpr((cast(GroupExpr) node).val) ~ ")";
@@ -585,6 +658,14 @@ private:
 
     string compileMemberExpr(MemberExpr node)
     {
+        if (node.right.kind == NodeKind.StructLit)
+        {
+            // string expr = compileExpr(node.right);
+            // writeln(expr);
+            // return expr;
+            return compileExpr(node.right);
+        }
+
         TypeExpr type = node.left.type_expr;
         string typeName, id;
         bool isArrow;
@@ -632,6 +713,11 @@ private:
                     id = format("tmp_%d", tmp++);
                     emit(format("%s %s = %s;", m.right.type_expr, id, member), 4);
                 }
+            } 
+            else if (CallExpr c = cast(CallExpr) node.left)
+            {
+                id = format("tmp_%d", tmp++);
+                emit(format("%s %s = %s;", c.type_expr, id, compileExpr(c)), 4);
             }
             if (id != "")
             {
@@ -871,7 +957,7 @@ private:
 
 public:
     this(Program program, TypeRegistry types, bool[string] staticFunctions, bool noHeader, bool genHeaderFile, 
-        string headerFile, ImportResolverContext* context, bool isCpp)
+        string headerFile, ImportResolverContext* context, bool isCpp, TypeResolver resolver)
     {
         this.program = program;
         this.types = types;
@@ -879,6 +965,7 @@ public:
         this.genHeaderFile = genHeaderFile;
         this.headerFile = headerFile;
         this.context = context;
+        this.resolver = resolver;
         if (noHeader) return;
         cxHeader ~= `
 #ifndef __CLANG_STDINT_H

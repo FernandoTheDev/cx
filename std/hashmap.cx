@@ -53,6 +53,8 @@ u32 murmur3(char* key, u32 len, u32 seed) {
     return h1;
 }
 
+// Fernando
+// 91839181
 u32 hashKey(char* key) {
     return murmur3(key, key.length, 0x9747b28c);
 }
@@ -77,30 +79,27 @@ struct HashMap<V> {
     u32 size;
 
     static HashMap<V> new(u32 cap) {
-        Entry<V>** buckets = calloc(cap, sizeof(Entry<V>*));
-        return (HashMap<V>) {buckets, cap, 0};
+        return .{calloc(cap, sizeof(Entry<V>*)), cap, 0};
     }
 
-    u32 bucketIndex(char* key) {
-        return hashKey(key) % self.cap;
-    }
+    u32 bucketIndex(char* key) => hashKey(key) % self.cap
 
     void set(char* key, V value) {
         u32 idx = self.bucketIndex(key);
         Entry<V>* curr = self.buckets[idx];
 
         while curr != null {
-            if strcmp(curr.key, key) == 0 {
+            if curr.key === key {
                 curr.value = value;
                 return;
             }
             curr = curr.next;
         }
 
-        Entry<V>* entry = Entry<V>.create(key, value);
+        Entry<V>* entry = .create(key, value);
         entry.next = self.buckets[idx];
         self.buckets[idx] = entry;
-        self.size = self.size + 1;
+        self.size++;
     }
 
     Box<V> get(char* key) {
@@ -108,20 +107,17 @@ struct HashMap<V> {
         Entry<V>* curr = self.buckets[idx];
 
         while curr != null {
-            if curr.key === key 
-                return Box<V>.of(curr.value);
+            if curr.key === key
+                return .of(curr.value);
             curr = curr.next;
         }
 
-        return Box<V>.empty();
+        return .empty();
     }
 
-    bool has(char* key) {
-        Box<V> res = self.get(key);
-        return !res.isEmpty();
-    }
+    bool has(char* key) => !self.get(key).isEmpty()
 
-    void delete() {
+    void free() {
         u32 i = 0;
         while i < self.cap {
             Entry<V>* curr = self.buckets[i];
@@ -130,7 +126,7 @@ struct HashMap<V> {
                 free(curr);
                 curr = next;
             }
-            i = i + 1;
+            i++;
         }
         free(self.buckets);
     }

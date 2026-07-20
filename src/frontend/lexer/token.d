@@ -8,6 +8,7 @@ enum TokenKind : ubyte
     Include,
 
     // keywords
+    ForEach,
     Is,
     Type,
     TypeName,
@@ -64,6 +65,7 @@ enum TokenKind : ubyte
     SemiColon, // ;
     Dot, // .
     At, // @
+    Range, // ..
     Ellipsis, // ...
 
     Plus, // +
@@ -85,7 +87,6 @@ enum TokenKind : ubyte
     SHREquals, // >>=
     Equals, // =
 
-
     Arrow, // =>
     EEquals, // ==
     EEEquals, // ===
@@ -98,6 +99,8 @@ enum TokenKind : ubyte
     And, // &&
     Or, // ||
     Question, // ?
+    QQuestion, // ??
+    QDot, // ?.
 
     BITLeft, // <<
     BITRight, // >>

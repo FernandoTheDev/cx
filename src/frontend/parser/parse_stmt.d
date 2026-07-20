@@ -176,7 +176,7 @@ public:
         {
             if (p.check(TokenKind.RBrace))
                 break;
-            Node node = p.parseIntern();
+            Node node = p.parseIntern()[0];
             if (node.kind == NodeKind.ContinueOrBreakStmt || node.kind == NodeKind.ReturnStmt)
                 close = true;
             if (node.kind == NodeKind.VarDecl)
@@ -184,6 +184,21 @@ public:
             body ~= node;
         }
         return new CaseStmt(value, hasVar, body, pos);
+    }
+
+    Node parseForEachStmt(Position pos)
+    {
+        Node k, v, value;
+        v = p.parseExpr.parse();
+        if (p.match(TokenKind.Comma))
+        {
+            k = v;
+            v = p.parseExpr.parse();
+        }
+        p.consume(TokenKind.SemiColon, "Expected ';'.");
+        value = p.parseExpr.parse();
+        Node[] body = parseBody();
+        return new ForEachStmt(k, v, value, body, pos);
     }
 
     Node parse()
@@ -225,6 +240,9 @@ public:
         case TokenKind.Case:
         case TokenKind.Default:
             return parseCaseStmt(tk.pos, tk.kind == TokenKind.Default);
+
+        case TokenKind.ForEach:
+            return parseForEachStmt(tk.pos);
 
         default:
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);

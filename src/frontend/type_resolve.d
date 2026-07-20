@@ -1,6 +1,7 @@
 module frontend.type_resolve;
 
 import frontend;
+import utils;
 
 import std.format;
 import std.stdio;
@@ -35,10 +36,13 @@ final class TypeResolver
 private:
     TypeRegistry types;
     TypeExpr currentSelfType; // tipo (sem ponteiro) da struct dona do método atual
+    Diagnostics err;
 
     // nome da struct -> declaração completa, pra achar campos e métodos
     StructDecl[string] structs;
     TypeExpr[string] functions;
+    TypeExpr reference = null;
+    TypeExpr[][string] functionsArgs;
 
     void collectDecls(Program program)
     {
@@ -70,7 +74,7 @@ private:
         return null;
     }
 
-    FnDecl findMethod(string structName, string methodName)
+    public FnDecl findMethod(string structName, string methodName)
     {
         if (auto s = structName in structs)
             foreach (fn; (*s).functions)
@@ -180,21 +184,53 @@ private:
             resolveExprType(tn.right, scp);
             return tn.left.type_expr;
 
+        case NodeKind.RangeExpr:
+            RangeExpr range = cast(RangeExpr) n;
+            resolveExprType(range.left, scp);
+            resolveExprType(range.right, scp);
+            return range.type_expr;
+
         default:
             // já vêm com type_expr setado no próprio construtor
             return n.type_expr;
         }
     }
 
+    bool isStructLit(Node node)
+    {
+        if (node is null)
+            return false;
+        if (node.kind == NodeKind.StructLit)
+            return true;
+        if (MemberExpr m = cast(MemberExpr) node)
+            return m.left is null && isStructLit(m.right);
+        return false;
+    }
+
     TypeExpr resolveMemberExpr(MemberExpr m, Scope scp)
     {
+        // .call() | .member | .{}
+        // if (node.left is null)
+        // {
+        //     if (originalRef !is null && reference !is null)
+        //         node.left = new IdentExpr(originalRef, reference, node.pos);
+        // }
+        if (m.left is null)
+        {
+            // não da pra resolver o tipo
+            if (m.right.kind == NodeKind.StructLit)
+                return resolveExprType(m.right, scp);
+            // if (m.right.kind == NodeKind.CallExpr || m.right.kind == NodeKind.IdentExpr)
+            //     return TypeExpr.init;
+            if (reference !is null)
+                m.left = new IdentExpr(reference.toStr(), reference, m.pos);
+        }
+
         // caso especial: right é uma chamada de método -> a.metodo(...)
         if (m.right.kind == NodeKind.CallExpr)
         {
             CallExpr call = cast(CallExpr) m.right;
-            foreach (arg; call.args)
-                resolveExprType(arg, scp);
-
+            
             TypeExpr leftType = resolveExprType(m.left, scp);
             m.left.type_expr = leftType;
 
@@ -207,6 +243,22 @@ private:
             string methodName;
             if (call.callee.kind == NodeKind.IdentExpr)
                 methodName = (cast(IdentExpr) call.callee).val;
+
+            TypeExpr re = reference;
+            reference = null;
+            string callee = format("%s_%s", sName, methodName);
+
+            foreach (i, ref Node arg; call.args)
+            {
+                if (callee in functionsArgs)
+                {
+                    reference = i >= functionsArgs[callee].length ? null : functionsArgs[callee][i];
+                    if (reference !is null && isStructLit(arg))
+                        arg = new CastExpr(arg, reference, arg.pos);
+                }
+                resolveExprType(arg, scp);
+            }
+            reference = re;
 
             FnDecl fn = findMethod(sName, methodName);
             if (fn is null)
@@ -274,13 +326,25 @@ private:
 
     TypeExpr resolveCallExpr(CallExpr c, Scope scp)
     {
-        foreach (arg; c.args)
+        TypeExpr re = reference;
+        reference = null;
+        string callee = c.callee.kind == NodeKind.IdentExpr ? (cast(IdentExpr)c.callee).val : "";
+
+        foreach (i, ref Node arg; c.args)
+        {
+            if (callee in functionsArgs)
+            {
+                reference = i >= functionsArgs[callee].length ? null : functionsArgs[callee][i];
+                if (reference !is null && isStructLit(arg))
+                    arg = new CastExpr(arg, reference, arg.pos);
+            }
             resolveExprType(arg, scp);
+        }
+        reference = re;
 
         if (c.callee.kind != NodeKind.IdentExpr)
             resolveExprType(c.callee, scp);
         else {
-            string callee = (cast(IdentExpr)c.callee).val;
             // writeln("Callee: ", callee);
             // writeln(functions, "\n");
             if (TypeExpr* t = callee in functions)
@@ -303,6 +367,9 @@ private:
             VarDecl v = cast(VarDecl) n;
             if (v.val !is null)
             {
+                TypeExpr re = reference;
+                reference = v.type_expr;
+                scope (exit) reference = re;
                 resolveExprType(v.val, scp);
                 if (v.val.type_expr is null) v.val.type_expr = v.type_expr;
             }
@@ -310,7 +377,10 @@ private:
             return;
 
         case NodeKind.ReturnStmt:
-            resolveExprType((cast(ReturnStmt) n).val, scp);
+            ReturnStmt ret = cast(ReturnStmt) n;
+            if (isStructLit(ret.val) && reference !is null)
+                ret.val = new CastExpr(ret.val, reference, ret.val.pos);
+            resolveExprType(ret.val, scp);
             return;
 
         case NodeKind.IfStmt:
@@ -361,6 +431,52 @@ private:
         case NodeKind.ContinueOrBreakStmt:
             return;
 
+        case NodeKind.ForEachStmt:
+            ForEachStmt fe = cast(ForEachStmt) n;
+            Scope inner = new Scope(scp);
+            
+            if (fe.k !is null)
+                resolveExprType(fe.k, inner);
+            
+            if (fe.v !is null)
+            {
+                resolveExprType(fe.v, inner);
+                if (UnaryExpr un = cast(UnaryExpr) fe.v)
+                {
+                    if (un.op != TokenKind.BITAnd)
+                    {
+                        err.error(fe.v.pos, "Unexpected operator.");
+                        goto end;
+                    }
+                    if (un.val.kind != NodeKind.IdentExpr)
+                    {
+                        err.error(fe.v.pos, "Invalid value for foreach.");
+                        goto end;
+                    }
+                }
+            }
+
+            if (fe.value !is null)
+            {
+                resolveExprType(fe.value, inner);
+                if (!isStruct(fe.value.type_expr))
+                {
+                    err.error(fe.value.pos, "It is only possible to iterate over structs.");
+                    goto end;
+                }
+                
+                string sname = fe.value.type_expr.toStr();
+                if (!findMethod(sname, "iter"))
+                {
+                    err.error(fe.value.pos, 
+                        "The target struct cannot be iterated because it does not contain an iterator.");
+                    goto end;
+                }
+            }
+            end:
+            resolveBody(fe.body, inner);
+            return;
+
         default:
             // CallExpr, MemberExpr, AssignStmt, UnaryExpr usados como statement
             resolveExprType(n, scp);
@@ -381,14 +497,21 @@ private:
         if (ownerName !is null && !(fn.flags & NodeFlags.Static))
             scp.declare("self", new TypeExprPointer(*types.get(ownerName)));
         foreach (arg; fn.args)
+        {
+            functionsArgs[fn.name] ~= arg.type_expr;
             scp.declare(arg.name, arg.type_expr);
+        }
+        TypeExpr re = reference;
+        reference = fn.type_expr;
+        scope (exit) reference = re;
         resolveBody(fn.body, scp);
     }
 
 public:
-    this(TypeRegistry types)
+    this(TypeRegistry types, Diagnostics err)
     {
         this.types = types;
+        this.err = err;
     }
 
     void resolve(Program program)

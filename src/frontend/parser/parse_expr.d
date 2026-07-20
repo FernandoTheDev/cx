@@ -98,7 +98,7 @@ public:
                 Token name = p.consume(TokenKind.Id, "Expected an 'ID' after the type.");
                 if (p.check(TokenKind.LParen))
                     return p.parseDecl.parseFnDecl(type, name, false);
-                if (p.check(TokenKind.Equals) || p.check(TokenKind.SemiColon))
+                if (p.check(TokenKind.Equals) || p.check(TokenKind.SemiColon) || p.check(TokenKind.Comma))
                     return p.parseDecl.parseVarDecl(type, name);
             }
             if (label)
@@ -184,6 +184,10 @@ public:
 
         case TokenKind.LParen:
             return parseCastOrNode(tk.pos);
+
+        case TokenKind.Dot:
+            // .call() | .member
+            return parseMemberExpr(null);
 
         default:
             // tk.print();
@@ -292,6 +296,7 @@ public:
             || p.future(TokenKind.SemiColon, 1) 
             || p.future(TokenKind.Dot, 1) 
             || p.future(TokenKind.LParen, 1)
+            || p.future(TokenKind.Comma, 1)
             )
         {
             // writeln("OK");
@@ -398,12 +403,23 @@ public:
             p.advance(); // consome '('
             val = parseCallExpr(val); // reusa a função existente, empacota como CallExpr(val, args)
         }
-        return new MemberExpr(left, val, p.getPos(left.pos, val.pos));
+        return new MemberExpr(left, val, p.getPos(left is null ? null : left.pos, val.pos));
+    }
+
+    Node parseIndex()
+    {
+        Node left = parse();
+        // p.previous().print();
+        // p.peek().print();
+        bool isCopy = p.peek().kind == TokenKind.Ellipsis;
+        if (p.match(TokenKind.Range) || p.match(TokenKind.Ellipsis))
+            return new RangeExpr(left, parse(), isCopy, left.pos);
+        return left;
     }
 
     Node parseIndexExpr(Node left)
     {
-        Node idx = parse();
+        Node idx = parseIndex();
         Position end = p.consume(TokenKind.RBracket, "Expected ']'.").pos;
         return new IndexExpr(left, idx, p.getPos(left.pos, end));
     }

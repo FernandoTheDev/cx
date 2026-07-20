@@ -1,6 +1,7 @@
 module utils;
 
 import frontend.parser.ast : Node;
+import frontend.type_expr;
 
 import core.stdc.stdlib : exit;
 import std.exception;
@@ -40,4 +41,13 @@ string clearNameMangling(string name)
         else
             buff ~= name[i];
     return buff;
+}
+
+bool isStruct(TypeExpr type)
+{
+    if (TypeExprUser p = cast(TypeExprUser) type)
+        return p.kind == TypeExprKind.Struct;
+    if (TypeExprGeneric p = cast(TypeExprGeneric) type)
+        return true;
+    return false;
 }

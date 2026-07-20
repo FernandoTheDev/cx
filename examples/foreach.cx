@@ -1,0 +1,26 @@
+//# 0
+import std.array;
+import std.stack;
+import std.io;
+
+int main() {
+    Array<int> arr = .new(4);
+    defer arr.free();
+    
+    arr.push(60);
+    arr.push(7);
+
+    int num = 0;
+    foreach k, n; arr {
+        printf("%d\n", k);
+        num += n;
+    }
+
+    foreach &n; arr {
+        printf("%p\n", (void*) n);
+    }
+
+    printf("Result: %d\n", num);
+
+    return 0;
+}

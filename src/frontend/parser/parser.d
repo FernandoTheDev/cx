@@ -130,6 +130,7 @@ class Parser
         case NodeKind.ContinueOrBreakStmt:
         case NodeKind.GotoStmt:
         case NodeKind.ImportStmt:
+        case NodeKind.Multi:
             return true;
         default:
             return false;
@@ -160,6 +161,7 @@ class Parser
         case TokenKind.Switch:
         case TokenKind.Case:
         case TokenKind.Default:
+        case TokenKind.ForEach:
             return true;
         default:
             return false;
@@ -181,16 +183,18 @@ class Parser
         }
     }
 
-    Node parseIntern()
+    Node[] parseIntern()
     {
-        Node node;
+        Node[] node;
         if (isDecl())
-            node = parseDecl.parse();
+            node ~= parseDecl.parse();
         else if (isStmt())
-            node = parseStmt.parse();
+            node ~= parseStmt.parse();
         else
-            node = parseExpr.parse(Precedence.Low, true);
-        checkSemiColon(node);
+            node ~= parseExpr.parse(Precedence.Low, true);
+        checkSemiColon(node[0]);
+        if (node[0].kind == NodeKind.Multi)
+            node ~= (cast(Multi)node[0]).body;
         return node;
     }
 

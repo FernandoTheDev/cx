@@ -1,0 +1,9 @@
+//! name: Fernando\n
+import std.string;
+import std.io;
+
+int main() {
+    String name = .from("Fernando");
+    printf("name: %s\n", name.ptr);
+    return 0;
+}

@@ -10,6 +10,7 @@ import std.format : format;
 enum NodeKind : ubyte
 {
     Program, // 1 2
+    Multi, // 1 2
 
     NumericLit, // 1 2
     DoubleLit, // 1 2
@@ -34,6 +35,7 @@ enum NodeKind : ubyte
     IsExpr, // 1 2
     TTypeExpr, // 1 2
     TernaryExpr, // 1 2
+    RangeExpr, // 1 2
 
     IncludeHeader, // 1 2
     VarDecl, // 1 2
@@ -57,6 +59,7 @@ enum NodeKind : ubyte
     RawStmt, // 1 2
     SwitchStmt, // 1 2
     CaseStmt, // 1 2
+    ForEachStmt, // 1 2
 }
 
 abstract class Node
@@ -1713,6 +1716,105 @@ class TernaryExpr : Node
         expr.subGeneric(names, types);
         left.subGeneric(names, types);
         right.subGeneric(names, types);
+    }
+}
+
+class Multi : Node
+{
+    Node[] body;
+
+    this(Node[] body)
+    {
+        super(NodeKind.Multi);
+        this.body = body;
+    }
+
+    override void print(uint indent = 0)
+    {
+        iprint(indent, "Multi");
+    }
+
+    override Multi dup()
+    {
+        //
+        return new Multi(dupArr(body));
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        subGenericArr(body, names, types);
+    }
+}
+
+class RangeExpr : Node
+{
+    Node left, right;
+    bool isCopy;
+
+    this(Node left, Node right, bool isCopy, Position pos)
+    {
+        super(NodeKind.RangeExpr, pos);
+        this.left = left;
+        this.right = right;
+        this.isCopy = isCopy;
+    }
+
+    override void print(uint indent = 0)
+    {
+        iprint(indent, "RangeExpr");
+    }
+
+    override RangeExpr dup()
+    {
+        return new RangeExpr(left.dup(), right.dup(), isCopy, pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        // subGenericArr(body, names, types);
+        // left.subGeneric(names, types);
+        // right.subGeneric(names, types);
+        left.type_expr = subGenericType(left.type_expr, names, types);
+        right.type_expr = subGenericType(right.type_expr, names, types);
+    }
+}
+
+class ForEachStmt : Node
+{
+    Node k, v, value;
+    Node[] body;
+
+    this(Node k, Node v, Node value, Node[] body, Position pos)
+    {
+        super(NodeKind.ForEachStmt, pos);
+        this.k = k;
+        this.v = v;
+        this.value = value;
+        this.body = body;
+    }
+
+    override void print(uint indent = 0)
+    {
+        iprint(indent, "ForEachStmt");
+    }
+
+    override ForEachStmt dup()
+    {
+        return new ForEachStmt(k is null ? null : k.dup(), v.dup(), value.dup(), dupArr(body), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        // subGenericArr(body, names, types);
+        // left.subGeneric(names, types);
+        // right.subGeneric(names, types);
+        if (k !is null)
+            k.type_expr = subGenericType(k.type_expr, names, types);
+        v.type_expr = subGenericType(v.type_expr, names, types);
+        value.type_expr = subGenericType(value.type_expr, names, types);
+        subGenericArr(body, names, types);
     }
 }
 

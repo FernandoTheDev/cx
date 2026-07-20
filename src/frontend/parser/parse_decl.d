@@ -20,35 +20,59 @@ public:
 
     Node parseVarDecl(TypeExpr texpr, Token name, bool consumeSemiColon = false)
     {
-        // T NAME = VAL
-        Node value;
+        // T NAME, NAME2, ... = VAL, VAL2, ...;
+        if (texpr is null || name is null || name.kind != TokenKind.Id)
+            return new VarDecl("err", Node.init, false, new TypeExprNamed("/*err*/"), Position.init);
+
+        Token[] names = [name];
+        p.vars[name.s] = texpr;
+
+        // coleta nomes adicionais: T a, b, c
+        while (p.check(TokenKind.Comma))
+        {
+            p.advance(); // consome ','
+            Token n = p.consume(TokenKind.Id, "Expected identifier after ','.");
+            names ~= n;
+            p.vars[n.s] = texpr;
+        }
+
+        Node[] values;
+
         if (p.check(TokenKind.SemiColon))
-            value = null;
+            // sem inicializador: preenche com null pra cada nome
+            foreach (n; names)
+                values ~= null;
         else
         {
             p.consume(TokenKind.Equals, "Expected '='.");
-            value = p.parseExpr.parse();
+            values ~= p.parseExpr.parse();
+
+            while (p.check(TokenKind.Comma))
+            {
+                p.advance();
+                values ~= p.parseExpr.parse();
+            }
+
+            if (values.length != names.length)
+                p.err.error(p.getPos(name.pos, values[$-1].pos), 
+                    format("Expected %d values but got %d.", names.length, values.length));
         }
-        
+
         if (consumeSemiColon)
             p.match(TokenKind.SemiColon);
+
+        Node[] decls;
+        // writeln(values);
+        foreach (i, n; names)
+            decls ~= new VarDecl(n.s, i >= values.length ? null : values[i], false, texpr, p.getPos(texpr.pos, n.pos));
         
-        if (texpr is null || name is null || name.kind != TokenKind.Id)
-        {
-            // writeln("VAR: ", name);
-            return new VarDecl("err", Node.init, false, new TypeExprNamed("/*err*/"), Position.init);
-        }
-        // writeln("Type: ", texpr);
-        // writeln("Type Pos: ", texpr.pos);
-        // writeln("Name: ", name.kind);
-        // writeln("Name.s: ", name.s);
-        // writeln("Value: ", value, "\n");
-        p.vars[name.s] = texpr;
-        // writeln("New Var: ", p.vars[name.s]);
-        return new VarDecl(name.s, value, false, texpr, p.getPos(texpr.pos, name.pos));
+        if (decls.length == 1)
+            return decls[0];
+
+        return new Multi(decls);
     }
 
-    Node parseFnDecl(TypeExpr retType, Token name, bool isStatic, string baseName = "")
+    Node parseFnDecl(TypeExpr retType, Token name, bool isStatic, string baseName = "", string[] genericT = [])
     {
         TypeExpr[string] vars = p.vars;
         p.vars = (TypeExpr[string]).init;
@@ -56,11 +80,19 @@ public:
         p.consume(TokenKind.LParen, "Expected '('.");
         FnArg[] args;
         ubyte flags;
+        bool isGeneric;
+
+        pragma(inline, true);
+        bool exists(string n) {
+            return (genericT.map!(x => x == n).array).length > 0;
+        }
 
         while (!p.check(TokenKind.RParen))
         {
             TypeExpr type = p.parseType.parse();
             Token argName = p.consume(TokenKind.Id, "Expected an identifier.");
+            if (exists(argName.s))
+                isGeneric = true;
             Node val = null;
             if (p.match(TokenKind.Equals))
                 val = p.parseExpr.parse();
@@ -97,6 +129,9 @@ public:
             flags |= NodeFlags.Static;
             p.ctx.statics[fnName] = true;   
         }
+
+        if (flags & NodeFlags.Overload && isGeneric)
+            p.err.error(name.pos, "You cannot use overloading on a generic function.");
 
         p.vars = vars;
         return new FnDecl(fnName, args, body, retType, name.pos, flags);
@@ -138,13 +173,18 @@ public:
                 TypeExpr type = p.parseType.parse();
                 Token name = p.consume(TokenKind.Id, "Expected an 'ID'.");
                 if (p.check(TokenKind.LParen))
-                {
-                    functions ~= cast(FnDecl)parseFnDecl(type, name, isStatic, genericT.length > 0 ? "" : sname.s);
+                    functions ~= cast(FnDecl)parseFnDecl(type, name, isStatic, genericT.length > 0 ? "" : sname.s, 
+                        genericT);
                     // if (functions[$-1].flags & NodeFlags.Overload)
                     //     functions[$-1].name = sname.s ~ "_" ~ functions[$-1].name;
-                }
                 else
-                    fields ~= cast(VarDecl)parseVarDecl(type, name, true);
+                {
+                    Node var = parseVarDecl(type, name, true);
+                    if (var.kind == NodeKind.VarDecl)
+                        fields ~= cast(VarDecl) var;
+                    else
+                        fields ~= cast(VarDecl[])(cast(Multi) var).body;
+                }
             }
         }
 

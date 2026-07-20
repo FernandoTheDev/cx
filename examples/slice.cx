@@ -1,0 +1,18 @@
+//! CX!\n.cx\n
+import std.string;
+import std.slice;
+import std.io;
+
+int main() {
+    char* filename = "test.cx";
+    size_t size = filename.length;
+
+    Slice<char> ext = filename[-3..size];
+    if ext === ".cx" {
+        printf("CX!\n");
+    }
+
+    printf("%.*s\n", ext.length, ext.ptr);
+    
+    return 0;
+}
