@@ -120,7 +120,11 @@ TestResult runTest(string filename, string llvmLinkFlag)
 
     if (fromCode)
     {
-        int expected = to!int(firstLine);
+        int expected;
+        try 
+            expected = to!int(firstLine);
+        catch (Exception e)
+            expected = 0;
         if (expected != code)
         {
             res.ok  = false;

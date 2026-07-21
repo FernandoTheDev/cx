@@ -115,6 +115,7 @@ public:
         {
             Node val = p.parseExpr.parse();
             body ~= new ReturnStmt(val, val.pos);
+            p.consume(TokenKind.SemiColon, "Expected ';' after arrow function.");
         }
         else
         {

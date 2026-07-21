@@ -1,0 +1,18 @@
+//# 0
+include <stdio.h>
+
+int sum(int x, int y) {
+    return x + y;
+}
+
+int main() {
+    char* name = "Fernando";
+    int val = 18;
+    
+    int x = sum(val * 18, 1);
+    int* y = &x;
+    *y = 67;
+
+    printf("%s %d %d\n", name, val, x);
+    return 0;
+}

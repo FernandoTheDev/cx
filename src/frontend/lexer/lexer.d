@@ -25,102 +25,7 @@ private:
     uint offset, loffset;
     uint line = 1;
 
-    TokenKind[string] keywords = [
-        "__is": TokenKind.Is,
-        "__type": TokenKind.Type,
-        "__typename": TokenKind.TypeName,
-
-        "foreach": TokenKind.ForEach,
-        "default": TokenKind.Default,
-        "switch": TokenKind.Switch,
-        "case": TokenKind.Case,
-        "register": TokenKind.Register,
-        "_Atomic": TokenKind.Atomic,
-        "restrict": TokenKind.Restrict,
-        "volatile": TokenKind.Volatile,
-        "const": TokenKind.Const,
-        "return": TokenKind.Return,
-        "static": TokenKind.Static,
-        "inline": TokenKind.Inline,
-        "overload": TokenKind.Overload,
-        "struct": TokenKind.Struct,
-        "alias": TokenKind.Alias,
-        "enum": TokenKind.Enum,
-        "union": TokenKind.Union,
-        "defer": TokenKind.Defer,
-        "if": TokenKind.If,
-        "else": TokenKind.Else,
-        "for": TokenKind.For,
-        "while": TokenKind.While,
-        "goto": TokenKind.Goto,
-        "import": TokenKind.Import,
-        "continue": TokenKind.Continue,
-        "break": TokenKind.Break,
-        "sizeof": TokenKind.SizeOf,
-        "true": TokenKind.True,
-        "false": TokenKind.False,
-        "null": TokenKind.Null,
-        "NULL": TokenKind.Null,
-    ];
-
-    TokenKind[string] symbols = [
-        "(": TokenKind.LParen,
-        ")": TokenKind.RParen,
-        "{": TokenKind.LBrace,
-        "}": TokenKind.RBrace,
-        "[": TokenKind.LBracket,
-        "]": TokenKind.RBracket,
-        
-        ".": TokenKind.Dot,
-        "..": TokenKind.Range,
-        "...": TokenKind.Ellipsis,
-
-        ",": TokenKind.Comma,
-        ":": TokenKind.Colon,
-        ";": TokenKind.SemiColon,
-        "@": TokenKind.At,
-
-        "+": TokenKind.Plus,
-        "++": TokenKind.PPlus,
-        "-": TokenKind.Minus,
-        "--": TokenKind.MMinus,
-        "*": TokenKind.Star,
-        "/": TokenKind.Slash,
-        "%": TokenKind.Modulo,
-
-        "=>": TokenKind.Arrow,
-        "==": TokenKind.EEquals,
-        "===": TokenKind.EEEquals,
-        "<": TokenKind.LThan,
-        ">": TokenKind.GThan,
-        "<=": TokenKind.LEquals,
-        ">=": TokenKind.GEquals,
-        "!": TokenKind.Bang,
-        "!=": TokenKind.NEquals,
-        "&&": TokenKind.And,
-        "||": TokenKind.Or,
-        "?": TokenKind.Question,
-        "??": TokenKind.QQuestion,
-        "?.": TokenKind.QDot,
-
-        "+=": TokenKind.PLUSEquals,
-        "-=": TokenKind.MINUSEquals,
-        "/=": TokenKind.DIVEquals,
-        "*=": TokenKind.STAREquals,
-        "%=": TokenKind.MODEquals,
-        "|=": TokenKind.OBWEquals,
-        "&=": TokenKind.EBWEquals,
-        "<<=": TokenKind.SHLEquals,
-        ">>=": TokenKind.SHREquals,
-        "=": TokenKind.Equals,
-
-        "<<": TokenKind.BITLeft,
-        ">>": TokenKind.BITRight,
-        "&": TokenKind.BITAnd,
-        "|": TokenKind.BITOr,
-        "~": TokenKind.BITNot,
-        "^": TokenKind.BITXor,
-    ];
+    TokenKind[string] keywords, symbols;
 
     pragma(inline, true)
     bool isAtEnd(uint i = 0)
@@ -177,29 +82,27 @@ private:
     pragma(inline, true)
     bool checkNewLine(char ch)
     {
-        version (Windows)
+        if (ch == '\r' && !isAtEnd())
         {
-            if (ch == '\r' && !isAtEnd())
+            if (check('\n'))
             {
-                if (check('\n'))
-                {
-                    // o \r ja chegou com um advance()
-                    advance(); // pula \n
-                    loffset = 0;
-                    line++;
-                    return true;        
-                }
-            }
-            return false;
-        } else {
-            if (ch == '\n')
-            {
+                advance(); // pula \n
+                // o \r ja chegou com um advance()
                 loffset = 0;
                 line++;
-                return true;
+                return true;        
             }
             return false;
         }
+        
+        if (ch == '\n')
+        {
+            loffset = 0;
+            line++;
+            return true;
+        }
+        
+        return false;
     }
 
     pragma(inline, true)
@@ -372,6 +275,103 @@ public:
         this.source = source;
         this.err = err;
         this.type = t;
+
+        this.keywords = [
+            "__is": TokenKind.Is,
+            "__type": TokenKind.Type,
+            "__typename": TokenKind.TypeName,
+
+            "foreach": TokenKind.ForEach,
+            "default": TokenKind.Default,
+            "switch": TokenKind.Switch,
+            "case": TokenKind.Case,
+            "register": TokenKind.Register,
+            "_Atomic": TokenKind.Atomic,
+            "restrict": TokenKind.Restrict,
+            "volatile": TokenKind.Volatile,
+            "const": TokenKind.Const,
+            "return": TokenKind.Return,
+            "static": TokenKind.Static,
+            "inline": TokenKind.Inline,
+            "overload": TokenKind.Overload,
+            "struct": TokenKind.Struct,
+            "alias": TokenKind.Alias,
+            "enum": TokenKind.Enum,
+            "union": TokenKind.Union,
+            "defer": TokenKind.Defer,
+            "if": TokenKind.If,
+            "else": TokenKind.Else,
+            "for": TokenKind.For,
+            "while": TokenKind.While,
+            "goto": TokenKind.Goto,
+            "import": TokenKind.Import,
+            "continue": TokenKind.Continue,
+            "break": TokenKind.Break,
+            "sizeof": TokenKind.SizeOf,
+            "true": TokenKind.True,
+            "false": TokenKind.False,
+            "null": TokenKind.Null,
+            "NULL": TokenKind.Null,
+        ];
+
+        this.symbols = [
+            "(": TokenKind.LParen,
+            ")": TokenKind.RParen,
+            "{": TokenKind.LBrace,
+            "}": TokenKind.RBrace,
+            "[": TokenKind.LBracket,
+            "]": TokenKind.RBracket,
+            
+            ".": TokenKind.Dot,
+            "..": TokenKind.Range,
+            "...": TokenKind.Ellipsis,
+    
+            ",": TokenKind.Comma,
+            ":": TokenKind.Colon,
+            ";": TokenKind.SemiColon,
+            "@": TokenKind.At,
+    
+            "+": TokenKind.Plus,
+            "++": TokenKind.PPlus,
+            "-": TokenKind.Minus,
+            "--": TokenKind.MMinus,
+            "*": TokenKind.Star,
+            "/": TokenKind.Slash,
+            "%": TokenKind.Modulo,
+    
+            "=>": TokenKind.Arrow,
+            "==": TokenKind.EEquals,
+            "===": TokenKind.EEEquals,
+            "<": TokenKind.LThan,
+            ">": TokenKind.GThan,
+            "<=": TokenKind.LEquals,
+            ">=": TokenKind.GEquals,
+            "!": TokenKind.Bang,
+            "!=": TokenKind.NEquals,
+            "&&": TokenKind.And,
+            "||": TokenKind.Or,
+            "?": TokenKind.Question,
+            "??": TokenKind.QQuestion,
+            "?.": TokenKind.QDot,
+    
+            "+=": TokenKind.PLUSEquals,
+            "-=": TokenKind.MINUSEquals,
+            "/=": TokenKind.DIVEquals,
+            "*=": TokenKind.STAREquals,
+            "%=": TokenKind.MODEquals,
+            "|=": TokenKind.OBWEquals,
+            "&=": TokenKind.EBWEquals,
+            "<<=": TokenKind.SHLEquals,
+            ">>=": TokenKind.SHREquals,
+            "=": TokenKind.Equals,
+    
+            "<<": TokenKind.BITLeft,
+            ">>": TokenKind.BITRight,
+            "&": TokenKind.BITAnd,
+            "|": TokenKind.BITOr,
+            "~": TokenKind.BITNot,
+            "^": TokenKind.BITXor,
+        ];
     }
 
     Token[] tokenizer()

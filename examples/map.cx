@@ -10,7 +10,7 @@ struct Fun<T, U> {
     }
 }
 
-float toFloat(int x) => (float) x * 1.5F
+float toFloat(int x) => (float) x * 1.5F;
 
 int main() {
     int[5] nums = [1, 2, 3, 4, 5];

@@ -33,7 +33,7 @@ struct Array<T> {
         return self.data[offset];
     }
 
-    Iterator<T> iter() => .{self.data, 0, self.size}
+    Iterator<T> iter() => .{self.data, 0, self.size};
 
     void free()
     {

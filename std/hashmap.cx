@@ -53,8 +53,6 @@ u32 murmur3(char* key, u32 len, u32 seed) {
     return h1;
 }
 
-// Fernando
-// 91839181
 u32 hashKey(char* key) {
     return murmur3(key, key.length, 0x9747b28c);
 }
@@ -82,7 +80,7 @@ struct HashMap<V> {
         return .{calloc(cap, sizeof(Entry<V>*)), cap, 0};
     }
 
-    u32 bucketIndex(char* key) => hashKey(key) % self.cap
+    u32 bucketIndex(char* key) => hashKey(key) % self.cap;
 
     void set(char* key, V value) {
         u32 idx = self.bucketIndex(key);
@@ -115,7 +113,7 @@ struct HashMap<V> {
         return .empty();
     }
 
-    bool has(char* key) => !self.get(key).isEmpty()
+    bool has(char* key) => !self.get(key).isEmpty();
 
     void free() {
         u32 i = 0;

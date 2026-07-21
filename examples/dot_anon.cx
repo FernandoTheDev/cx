@@ -1,11 +1,11 @@
 //# 67
 struct Foo {
     int x;
-    static Foo new() => .{30}
-    static int get(Foo f) => f.x
+    static Foo new() => .{30};
+    static int get(Foo f) => f.x;
 }
 
-int get(Foo f) => f.x
+int get(Foo f) => f.x;
 
 int main() {
     Foo f = .new();

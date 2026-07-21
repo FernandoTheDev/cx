@@ -11,15 +11,6 @@ enum OpCode {
     Halt,
 }
 
-char* opCodeToStr(OpCode op)
-{
-    if op == OpCode.Push return "Push";
-    if op == OpCode.Add return "Add";
-    if op == OpCode.Print return "Print";
-    if op == OpCode.Halt return "Halt";
-    return "Invalid OpCode";
-}
-
 struct Instruction {
     OpCode op;
     VMValue value;
@@ -36,19 +27,19 @@ struct VMValue {
         long i;
         float f;
     };
-    static VMValue mkInt(long i) => (VMValue) {VMType.Int, value.i = i}
-    static VMValue mkFloat(float i) => (VMValue) {VMType.Float, value.f = i}
+    static VMValue mkInt(long i) => (VMValue) {VMType.Int, value.i = i};
+    static VMValue mkFloat(float i) => (VMValue) {VMType.Float, value.f = i};
 }
 
 alias SValue = VMValue!StackError
 
-struct VM 
+struct VM
 {
     Array<Instruction> program;
     Stack<VMValue> stack;
     u32 offset;
 
-    static VM new(Array<Instruction> program) => (VM) { program, Stack<VMValue>.new(8), 0 }
+    static VM new(Array<Instruction> program) => (VM) { program, Stack<VMValue>.new(8), 0 };
 
     void run() {
         while self.offset < self.program.size
@@ -90,10 +81,10 @@ struct VM
                         printf("%lld\n", v.value.i);
                     else
                         printf("%f\n", v.value.f);
-                    return;
+                    continue;
                 
                 default:
-                    printf("Invalid opcode '%s'.\n", opCodeToStr(instr.op));
+                    printf("Invalid opcode '%s'.\n", instr.op.id);
                     continue;
             }
         }
