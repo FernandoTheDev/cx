@@ -182,10 +182,22 @@ private:
         string name = node.name;
         typedefs ~= format("typedef enum %s %s;", name, name);
         string _data = format("enum %s\n{\n", name);
+        /*
+        const char* ArrayError_ids[] = {
+            [ArrayError_NotFound] = "NotFound"
+        };
+        */
+        string ids = format("const char* %s_ids[] = {\n", name);
         foreach (string field; node.fields)
-            _data ~= indent(format("%s_%s,\n", name, field), ind + 4);
+        {
+            string namem = format("%s_%s", name, field);
+            _data ~= indent(namem ~ ",\n", ind + 4);
+            ids ~= indent(format("[%s] = \"%s\",\n", namem, field), 4);
+        }
+        ids ~= "};\n";
         _data ~= "};\n";
         data ~= _data;
+        data ~= ids;
     }
 
     string compileStmt(Node node, uint ind)
@@ -309,7 +321,7 @@ private:
             emit(format("for (;%s.offset < %s.length; %s.offset++)", temp, temp, temp), ind);
             emit(format("{"), ind);
             if (fe.k !is null)
-                emit(format("size_t %s = %s.offset;", compileExpr(fe.k), temp), ind);
+                emit(format("size_t %s = %s.offset;", compileExpr(fe.k), temp), ind+4);
             emit(format("__typeof__(%s(%s.ptr)) %s = %s(%s.ptr[%s.offset]);", 
                isRef ? "" : "*", temp, val, isRef ? "&" : "", temp, temp), ind+4);
             foreach (Node n; fe.body)
@@ -678,9 +690,16 @@ private:
                 return format("%s.val.%s", expr, val);
         }
 
-        if (isString(type) && node.right.kind == NodeKind.IdentExpr)
-            if ((cast(IdentExpr) node.right).val == "length")
+        IdentExpr idcast = cast(IdentExpr) node.right;
+        string rval = idcast ? idcast.val : "";
+
+        if (isString(type) && idcast)
+            if (rval == "length")
                 return format("strlen(%s)", compileExpr(node.left));
+
+        if (isEnum(type) && idcast)
+            if (rval == "id")
+                return format("%s_ids[%s]", type.toStr(), compileExpr(node.left));
 
         if (type is null)
             isArrow = true;
@@ -953,6 +972,13 @@ private:
         if (type is null)
             return false;
         return type.kind == TypeExprKind.Result;
+    }
+
+    bool isEnum(TypeExpr type)
+    {
+        if (TypeExprUser p = cast(TypeExprUser) type)
+            return p.kind == TypeExprKind.Enum;
+        return false;
     }
 
 public:

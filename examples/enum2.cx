@@ -1,0 +1,15 @@
+//! Bar\n
+import std.io;
+
+enum Foo {
+    Baz,
+    Bar
+}
+
+int main() {
+    Foo bar = .Bar;
+    if bar == .Baz
+        printf("Equals\n");
+    printf("%s\n", bar.id);
+    return 0;
+}

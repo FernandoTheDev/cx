@@ -139,6 +139,11 @@ private:
         case NodeKind.BinaryExpr:
             BinaryExpr b = cast(BinaryExpr) n;
             TypeExpr lt = resolveExprType(b.left, scp);
+            
+            TypeExpr re = reference;
+            reference = lt;
+            scope (exit) reference = re;
+            
             resolveExprType(b.right, scp);
             b.type_expr = lt; // aproximação: tipo do lado esquerdo domina
             return lt;

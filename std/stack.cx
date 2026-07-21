@@ -18,8 +18,8 @@ struct Stack<T>
         return (Stack<T>){data, 0, cap};
     }
 
-    bool isEmpty() => self.size == 0
-    bool isFull() => self.size >= self.cap
+    bool isEmpty() => self.size == 0;
+    bool isFull() => self.size >= self.cap;
 
     int!StackError push(T val)
     {

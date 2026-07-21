@@ -1,0 +1,17 @@
+//# 67
+struct Bar {
+    union foo {
+        int i;
+    }
+}
+
+struct Foo {
+    Bar bar;
+}
+
+int main() {
+    Foo f = .{
+        bar = .{ foo.i = 67 }
+    };
+    return f.bar.foo.i;
+}

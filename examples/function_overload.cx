@@ -1,5 +1,5 @@
 //# 60
-int sum(int x, int y) overload => x + y
+int sum(int x, int y) overload => x + y;
 
 double sum(double x, double y) overload {
     return x + y;

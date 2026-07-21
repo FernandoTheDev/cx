@@ -1,0 +1,105 @@
+const int VGA_WIDTH = 80;
+const int VGA_HEIGHT = 25;
+volatile char* VIDEO_MEM = (char*) 0xB8000;
+
+char make_color(char fg, char bg) => fg | (bg << 4);
+
+void clear_screen(char bg_color) {
+    char attr = make_color(0x0F, bg_color);
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT * 2; i += 2) {
+        VIDEO_MEM[i] = ' ';
+        VIDEO_MEM[i + 1] = attr;
+    }
+}
+
+void put_char_at(char c, char color, int x, int y) {
+    int offset = (y * VGA_WIDTH + x) * 2;
+    VIDEO_MEM[offset] = c;
+    VIDEO_MEM[offset + 1] = color;
+}
+
+void print_at(const char* msg, char color, int x, int y) {
+    int i = 0;
+    while msg[i] != '\0' {
+        put_char_at(msg[i], color, x + i, y);
+        i++;
+    }
+}
+
+void draw_box(char color) {
+    // Linhas horizontais (topo e base)
+    for (int x = 0; x < VGA_WIDTH; x++) {
+        put_char_at('-', color, x, 0);
+        put_char_at('-', color, x, VGA_HEIGHT - 1);
+    }
+    // Linhas verticais (lados)
+    for (int y = 0; y < VGA_HEIGHT; y++) {
+        put_char_at('|', color, 0, y);
+        put_char_at('|', color, VGA_WIDTH - 1, y);
+    }
+    // Cantos
+    put_char_at('+', color, 0, 0);
+    put_char_at('+', color, VGA_WIDTH - 1, 0);
+    put_char_at('+', color, 0, VGA_HEIGHT - 1);
+    put_char_at('+', color, VGA_WIDTH - 1, VGA_HEIGHT - 1);
+}
+
+void print_int_at(int num, char color, int x, int y) {
+    for (int c = 0; c < 8; c++)
+        put_char_at(' ', color, x + c, y);
+    
+    char[12] buf;
+    int idx = 0;
+
+    if num == 0 {
+        put_char_at('0', color, x, y);
+        return;
+    }
+
+    // Extrai os dígitos do fim para o começo
+    while num > 0 {
+        buf[idx++] = '0' + (num % 10);
+        num = num / 10;
+    }
+
+    // Imprime invertido para sair na ordem certa
+    for (int i = 0; i < idx; i++)
+        put_char_at(buf[idx - 1 - i], color, x + i, y);
+}
+
+int _start() {
+    // 0x00 = Preto, 0x01 = Azul, 0x02 = Verde, 0x04 = Vermelho, 0x0E = Amarelo, 0x0F = Branco
+    char theme_bg = 0x01; // Fundo Azul
+    clear_screen(theme_bg);
+
+    // UI Básica
+    char border_color = make_color(0x0E, theme_bg); // Texto Amarelo no Fundo Azul
+    draw_box(border_color);
+
+    char title_color = make_color(0x0F, theme_bg);  // Texto Branco no Fundo Azul
+    print_at("=== CX OPERATING SYSTEM v0.1 ===", title_color, 24, 2);
+
+    char text_color = make_color(0x0A, theme_bg);   // Texto Verde Claro
+    print_at("[OK] Protected Mode active (32-bit)", text_color, 4, 5);
+    print_at("[OK] VGA Memory mapped to 0xB8000", text_color, 4, 6);
+    print_at("[OK] CX Driver initialized successfully!", text_color, 4, 7);
+
+    // Status Bar / Ticks no Rodapé
+    char status_color = make_color(0x00, 0x07); // Texto Preto no Fundo Cinza
+    for (int x = 1; x < VGA_WIDTH - 1; x++)
+        put_char_at(' ', status_color, x, VGA_HEIGHT - 2);
+
+    print_at("Kernel Status: RUNNING", status_color, 3, VGA_HEIGHT - 2);
+
+    // Infinite Loop com Contador de Ciclos
+    int ticks = 0;
+    while true {
+        ticks++;
+        print_at("Cycles: ", status_color, 55, VGA_HEIGHT - 2);
+        print_int_at(ticks, status_color, 63, VGA_HEIGHT - 2);
+        // Pequeno atraso visual para não atualizar rápido demais
+        for (int delay = 0; delay < 1000000; delay++) __raw { asm("nop"); }
+    }
+
+    return 0;
+}

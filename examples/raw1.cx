@@ -13,7 +13,7 @@ u32 fast_add(u32 a, u32 b) {
     return result;
 }
 
-u32 count_leading_zeros(u32 x) => __builtin_clz(x)
+u32 count_leading_zeros(u32 x) => __builtin_clz(x);
 
 int main() {
     printf("fast_add: %u\n", fast_add(10, 20));

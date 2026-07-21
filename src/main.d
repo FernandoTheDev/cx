@@ -2,12 +2,14 @@ module main;
 
 import backend.codegen;
 import frontend;
+import builder;
+import updater;
 import errors;
 import utils;
 import env;
 
 import std.path : dirName, baseName, extension;
-import std.stdio : writeln, writefln;
+import std.stdio : writeln, writefln, dwrite = write;
 import core.stdc.stdlib : exit;
 import std.algorithm;
 import std.exception;
@@ -19,6 +21,13 @@ import std.file;
 
 __gshared Generic generic;
 __gshared bool noHeader;
+__gshared string stdDir, OS;
+
+pragma(inline, true)
+bool isCommand(string[] argv, string command)
+{
+	return argv.length > 1 ? argv[1] == command : false;
+}
 
 pragma(inline, true)
 void check_diagnostic(Diagnostics d)
@@ -27,10 +36,25 @@ void check_diagnostic(Diagnostics d)
 		exit(1);
 }
 
+struct CXArgs 
+{
+	bool emitc, opt, dbg, verMessage, helpMessage, genHeader, cpp, gcc, noHeader;
+	string[] link, cflags;
+	string output, target;
+}
+
 pragma(inline, true)
 void showHelp()
 {
-	writeln("Usage: cx [options] <file.cx>");
+	writeln("Usage:");
+	writeln("		cx <command>");
+	writeln("		cx <file.cx> [options]");
+	writeln();
+	writeln("Commands:");
+	writeln("        update          Update your compiler to the latest version.");
+	writeln("        compile         Compile your Cx project.");
+	writeln("        build           Create your Cx project.");
+	writeln("        run             Compile and execute your Cx project.");
 	writeln();
 	writeln("Options:");
 	writeln(
@@ -45,9 +69,10 @@ void showHelp()
 	writeln("      --gen-header      It will generate a .h file and a .c file without compiling at the end.");
 	writeln("      --cflags      	Pass compilation flags to the C compiler.");
 	writeln("      --cpp      	Compiles with a C++ compiler.");
+	writeln("      --gcc      	Set GCC as the default compiler.");
 	writeln();
 	writeln("Environment:");
-	writeln("  CC                    C compiler used to build the output (default: cc)");
+	writeln("  CC                    C compiler used to build the output (default: tcc -> gcc -> cc)");
 	writeln();
 	writeln("Examples:");
 	writeln("  cx update");
@@ -70,116 +95,17 @@ void showVersion()
 bool which(string c)
 {
 	return executeShell(format("which %s", c)).status == 0;
-} 
+}
 
-int main(string[] argv)
+int compile(string filename, ref CXArgs args)
 {
-	string stdDir;
-	string OS;
-
-	version (Windows)
-	{
-		writeln(
-			"The compiler does not yet support Windows, even though there is a build script and you managed to compile it.");
-		return 1;
-	}
-	
-	version (OSX)
-	    OS = "macos";
-	else version (linux)
-	    OS = "linux";
-	else version (Posix)
-	    OS = "unix";
-	else
-	    OS = "unknown";
-
-	if (OS == "unknown")
-	{
-		writefln("Unable to detect your operating system; please create an issue in the GitHub repository: '%s'", 
-			GITHUB_REPO);
-		return 0;
-	}
-
-	if (OS != "windows")
-	{
-		string home = environment.get("HOME", "");
-		stdDir = home ~ "/" ~ ".cx/";
-		if (!home || !exists(stdDir))
-		{
-			writefln("An error occurred while validating the compiler installation.");
-			writefln("Some folders may be missing; check if this path is valid: '%s'.", stdDir);
-			writefln(
-				"If it does not exist, then an error occurred while installing the compiler on your system.");
-			return 0;
-		}
-	}
-
-	if (argv.length > 1 && argv[1] == "update")
-	{
-		import updater;
-		return runUpdate();
-	}
-
-	bool emitc, opt, dbg, verMessage, helpMessage, genHeader, cpp;
-	string[] link, cflags;
-	string output, target;
-
-	try
-		getopt(argv,
-			"opt", &opt,
-			"version|v", &verMessage,
-			"help|h", &helpMessage,
-			"debug|d", &dbg,
-			"emit-c", &emitc,
-			"link|L", &link,
-			"output|o", &output,
-			"target", &target,
-			"no-header", &noHeader,
-			"gen-header", &genHeader,
-			"cflags", &cflags,
-			"cpp", &cpp,
-		);
-	catch (GetOptException e)
-	{
-		writefln("Invalid flag '%s'.", e.message[20 .. $]);
-		return 1;
-	}
-
-	if (verMessage)
-	{
-		showVersion();
-		return 0;
-	}
-
-	if (helpMessage)
-	{
-		showHelp();
-		return 0;
-	}
-
-	if (target == "")
-	{
-		version (linux)
-			target = "linux";
-		else version (Windows)
-			target = "windows";
-		else version (OSX)
-			target = "macos";
-		else version (Unix)
-			target = "unix";
-		else
-			target = "unknown";
-	}
-
-	cx_enforce(argv.length == 2, "The compiler expects at least one file, see 'cx -h'.");
-	string filename = argv[1];
 	cx_enforce(extension(filename) == ".cx", "The file is not a valid .cx file.");
 	cx_enforce(exists(filename), format("The file '%s' does not exist.", filename));
 
 	string dir = dirName(filename) ~ "/";
 	string content = readText(filename);
 	string file = baseName(filename);
-	output = output == "" ? file[0 .. $ - 3] : output;
+	args.output = args.output == "" ? file[0 .. $ - 3] : args.output;
 
 	Diagnostics err = new Diagnostics;
 	TypeRegistry registry = new TypeRegistry;
@@ -196,8 +122,9 @@ int main(string[] argv)
 		program = p.parse();
 	catch (Exception e)
 	{
+		check_diagnostic(err);
 		writefln("An internal error occurred in the parser: %s", e.message);
-		if (dbg) writeln(e);
+		if (args.dbg) writeln(e);
 		return 1;
 	}
 
@@ -217,27 +144,28 @@ int main(string[] argv)
 	new StructOrder(err).resolve(program);
 	check_diagnostic(err);
 
-	string fileh = output ~ (cpp ? ".hpp" : ".h");
-	string filec = output ~ (cpp ? ".cpp" : ".c");
-	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, genHeader, fileh, ctx, cpp, resolver).compile();
+	string fileh = args.output ~ (args.cpp ? ".hpp" : ".h");
+	string filec = args.output ~ (args.cpp ? ".cpp" : ".c");
+	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, args.genHeader, fileh, ctx, args.cpp, resolver)
+		.compile();
 	check_diagnostic(err);
 	write(filec, src[0]);
 
-	if (genHeader)
+	if (args.genHeader)
 	{
 		write(fileh, src[1]);
 		writefln("Success: two individual files, '%s' and '%s', were generated.", filec, fileh);
 		return 0;
 	}
 
-	if (emitc)
+	if (args.emitc)
 	{
 		writefln("File '%s' generated.", filec);
 		return 0;
 	}
 
-	string comp = "cc";
-	if (cpp) 
+	string comp = args.gcc ? "gcc" : (which("tcc") ? "tcc" : (which("gcc") ? "gcc" : "cc"));
+	if (args.cpp)
 	{
 		// decide o compilador a ser usado
 		comp = which("g++") ? "g++" : (which("clang++") ? "clang++" : "");
@@ -249,14 +177,16 @@ int main(string[] argv)
 	}
 
 	string c_compiler = environment.get("CC", comp);
-	string command = format("%s %s %s -o %s %s %s", c_compiler, filec, (opt ? "-O2" : ""), output,
-		link.length > 0 ? (link.map!(l => format("-l%s", l).array).join(" ")) : "", cflags.join(" "));
-	if (dbg)
+	string command = format("%s %s %s -o %s %s %s", c_compiler, filec, (args.opt ? "-O2" : ""), args.output,
+		args.link.length > 0 ? (args.link.map!(l => format("-l%s", l).array).join(" ")) : "", args.cflags.join(" "));
+	
+	if (args.dbg)
 		writeln("C Compiler: ", c_compiler);
 
 	auto exec = executeShell(command);
-	if (dbg)
+	if (args.dbg)
 		writeln("Command: ", command);
+
 	if (exec.status != 0)
 	{
 		writeln("An error occurred while compiling the program.");
@@ -266,4 +196,93 @@ int main(string[] argv)
 
 	executeShell(format("rm -f %s", filec));
 	return 0;
+}
+
+int main(string[] argv)
+{
+	version (Windows)
+	{
+		writeln(
+			"The compiler does not yet support Windows, even though there is a build script and you managed to compile it.");
+		return 1;
+	}
+
+	CXArgs args;
+	
+	version (OSX)
+	    OS = "macos";
+	else version (linux)
+	    OS = "linux";
+	else version (Posix)
+	    OS = "unix";
+	else
+	    OS = "unknown";
+
+	if (OS == "unknown")
+	{
+		writefln("Unable to detect your operating system, please create an issue in the GitHub repository: '%s'", 
+			GITHUB_REPO);
+		return 0;
+	}
+
+	if (OS != "windows")
+	{
+		string home = environment.get("HOME", "");
+		stdDir = home ~ "/" ~ ".cx/";
+		if (!home || !exists(stdDir))
+		{
+			writefln("An error occurred while validating the compiler installation.");
+			writefln("Some folders may be missing; check if this path is valid: '%s'.", stdDir);
+			writefln(
+				"If it does not exist, then an error occurred while installing the compiler on your system.");
+			return 0;
+		}
+	}
+
+	if (isCommand(argv, "update"))
+		return runUpdate();
+
+	if (isCommand(argv, "build"))
+		return runBuild();
+
+	bool isRun = isCommand(argv, "run");
+	if (isCommand(argv, "compile") || isRun)
+		return runCompile(isRun, args);
+
+	try
+		getopt(argv,
+			"opt", 		  &args.opt,
+			"version|v",  &args.verMessage,
+			"help|h", 	  &args.helpMessage,
+			"debug|d",    &args.dbg,
+			"emit-c",     &args.emitc,
+			"link|L",     &args.link,
+			"output|o",   &args.output,
+			"target", 	  &args.target,
+			"no-header",  &args.noHeader,
+			"gen-header", &args.genHeader,
+			"cflags",     &args.cflags,
+			"cpp", 	      &args.cpp,
+			"gcc", 	      &args.gcc,
+		);
+	catch (GetOptException e)
+	{
+		writefln("Invalid flag '%s'.", e.message[20 .. $]);
+		return 1;
+	}
+
+	if (args.verMessage)
+	{
+		showVersion();
+		return 0;
+	}
+
+	if (args.helpMessage)
+	{
+		showHelp();
+		return 0;
+	}
+
+	cx_enforce(argv.length == 2, "The compiler expects at least one file, see 'cx -h'.");
+	return compile(argv[1], args);
 }
