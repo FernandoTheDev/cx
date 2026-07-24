@@ -32,7 +32,7 @@ struct Codegen {
         return LLVMPointerType(LLVMInt8TypeInContext(self.context), 0);
     }
 
-    LLVMTypeRef fnType(LLVMTypeRef ret, LLVMTypeRef[] params, u32 count, bool varArg) {
+    LLVMTypeRef funcType(LLVMTypeRef ret, LLVMTypeRef[] params, u32 count, bool varArg) {
         return LLVMFunctionType(ret, params, count, varArg);
     }
 
@@ -41,10 +41,10 @@ struct Codegen {
     }
 
     LLVMValueRef beginFn(char* name, LLVMTypeRef type) {
-        LLVMValueRef fn = LLVMAddFunction(self.module, name, type);
-        LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(self.context, fn, "entry");
+        LLVMValueRef func = LLVMAddFunction(self.module, name, type);
+        LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(self.context, func, "entry");
         LLVMPositionBuilderAtEnd(self.builder, entry);
-        return fn;
+        return func;
     }
 
     LLVMValueRef constI32(int val) {
@@ -55,8 +55,8 @@ struct Codegen {
         return LLVMBuildGlobalStringPtr(self.builder, s, name);
     }
 
-    LLVMValueRef call(LLVMTypeRef fnType, LLVMValueRef fn, LLVMValueRef[] args, u32 count) {
-        return LLVMBuildCall2(self.builder, fnType, fn, args, count, "call");
+    LLVMValueRef call(LLVMTypeRef funcType, LLVMValueRef func, LLVMValueRef[] args, u32 count) {
+        return LLVMBuildCall2(self.builder, funcType, func, args, count, "call");
     }
 
     LLVMValueRef add(LLVMValueRef a, LLVMValueRef b) {
@@ -85,17 +85,17 @@ int main() {
 
     // declara printf(char*, ...) -> i32
     LLVMTypeRef[] printfArgs = {cg.i8ptr()};
-    LLVMTypeRef printfType = cg.fnType(cg._i32(), printfArgs, 1, 1);
+    LLVMTypeRef printfType = cg.funcType(cg._i32(), printfArgs, 1, 1);
     LLVMValueRef printfFn = cg.extern("printf", printfType);
 
     LLVMTypeRef[] sumArgs = {cg._i32(), cg._i32()};
-    LLVMTypeRef sumType = cg.fnType(cg._i32(), sumArgs, 2, 0);
+    LLVMTypeRef sumType = cg.funcType(cg._i32(), sumArgs, 2, 0);
     LLVMValueRef sumFn = cg.beginFn("soma", sumType);
     LLVMValueRef a = LLVMGetParam(sumFn, 0);
     LLVMValueRef b = LLVMGetParam(sumFn, 1);
     cg.ret(cg.add(a, b));
 
-    LLVMTypeRef mainType = cg.fnType(cg._i32(), null, 0, 0);
+    LLVMTypeRef mainType = cg.funcType(cg._i32(), null, 0, 0);
     cg.beginFn("main", mainType);
 
     LLVMValueRef[] sumCallArgs = {cg.constI32(60), cg.constI32(7)};

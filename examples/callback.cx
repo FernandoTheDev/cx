@@ -14,13 +14,13 @@ struct Other {
         return &Calc.sum;
     }
 
-    static int callSum(Fun fn, int x, int y) {
-        return fn(x, y);
+    static int callSum(Fun func, int x, int y) {
+        return func(x, y);
     }
 }
 
 int main() {
-    Fun fn = Other.getSum();
-    printf("%d\n", Other.callSum(fn, 10, 20));
+    Fun func = Other.getSum();
+    printf("%d\n", Other.callSum(func, 10, 20));
     return 0;
 }

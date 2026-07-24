@@ -1,0 +1,9 @@
+import std.io;
+
+alias Fn = int(int, int)
+
+int main() {
+    Fn sum = fn (int x, int y) int => x + y;
+    printf("%d\n", sum);
+    return 0;
+}

@@ -11,18 +11,11 @@ struct Arena
 
     /// Creates a new Arena with the given initial capacity in bytes.
     /// The underlying buffer is zero-initialized.
-    static Arena new(u32 cap)
-    {
-        char* data = calloc(1, cap);
-        return (Arena) {data, 0, cap};
-    }
+    static Arena new(u32 cap) => .{calloc(1, cap), 0, cap};
 
     /// Rounds `size` up to the next multiple of 8, ensuring
     /// allocations stay aligned. Internal helper used by `alloc`.
-    u32 alignUp(u32 size)
-    {
-        return (size + 7) & ~7;
-    }
+    u32 alignUp(u32 size) => (size + 7) & ~7;
 
     /// Allocates `size` bytes from the arena, aligned to 8 bytes.
     /// Grows the underlying buffer automatically if there isn't

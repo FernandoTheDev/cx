@@ -40,7 +40,7 @@ struct File {
         if sz < 0 return FileError.ReadError;
         fseek(f, 0, SEEK_SET);
 
-        Array<u8> buffer = Array<u8>.new((uint)sz);
+        Array<u8> buffer = .new((uint)sz);
         
         uint read_count = (uint)fread(buffer.data, 1, (size_t)sz, f);
         if read_count != (uint)sz {

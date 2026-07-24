@@ -281,6 +281,7 @@ public:
             "__type": TokenKind.Type,
             "__typename": TokenKind.TypeName,
 
+            "fn": TokenKind.Fn,
             "foreach": TokenKind.ForEach,
             "default": TokenKind.Default,
             "switch": TokenKind.Switch,

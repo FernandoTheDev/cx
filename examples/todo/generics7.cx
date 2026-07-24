@@ -1,0 +1,30 @@
+struct Box<T> {
+    T value;
+}
+
+struct Pair<A, B> {
+    A first;
+    B second;
+}
+
+struct Triple<A, B, C> {
+    Pair<A, B> pair;
+    C value;
+}
+
+struct Wrapper<T> {
+    Box<T> box;
+}
+
+struct Deep<A, B> {
+    Triple<
+        Wrapper<A>,
+        Pair<A, B>,
+        Box<B>
+    > value;
+}
+
+int main() {
+    Deep<int, float> x;
+    return 0;
+}

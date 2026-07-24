@@ -10,15 +10,11 @@ struct Array<T> {
     uint size;
     uint cap;
 
-    static Array<T> new(uint cap)
-    {
-        return (Array<T>) {calloc(cap, sizeof(T)), 0, cap};
-    }
+    static Array<T> new(uint cap) => .{calloc(cap, sizeof(T)), 0, cap};
 
     void push(T val)
     {
-        if self.size >= self.cap 
-        {
+        if self.size >= self.cap {
             uint newCap = self.cap * 2;
             self.data = realloc(self.data, newCap * sizeof(T));
             self.cap = newCap;

@@ -5,3 +5,4 @@ harpy
 *.o
 *.bin
 *.img
+*.out

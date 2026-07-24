@@ -76,9 +76,7 @@ struct HashMap<V> {
     u32 cap;
     u32 size;
 
-    static HashMap<V> new(u32 cap) {
-        return .{calloc(cap, sizeof(Entry<V>*)), cap, 0};
-    }
+    static HashMap<V> new(u32 cap) => .{calloc(cap, sizeof(Entry<V>*)), cap, 0};
 
     u32 bucketIndex(char* key) => hashKey(key) % self.cap;
 

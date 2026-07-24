@@ -3,9 +3,9 @@ import std.lib;
 import std.io;
 
 struct Fun<T, U> {
-    static U* map(T* data, u32 len, U(T) fn) {
+    static U* map(T* data, u32 len, U(T) func) {
         U* result = malloc(sizeof(U) * len);
-        for (u32 i = 0; i < len; i++) result[i] = fn(data[i]);
+        for (u32 i = 0; i < len; i++) result[i] = func(data[i]);
         return result;
     }
 }

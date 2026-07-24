@@ -12,13 +12,10 @@ struct Stack<T>
     uint size;
     uint cap;
 
-    static Stack<T> new (uint cap)
-    {
-        T *data = calloc(1, cap * sizeof(T));
-        return (Stack<T>){data, 0, cap};
-    }
+    static Stack<T> new (uint cap) => .{calloc(cap, sizeof(T)), 0, cap};
 
     bool isEmpty() => self.size == 0;
+    
     bool isFull() => self.size >= self.cap;
 
     int!StackError push(T val)

@@ -19,8 +19,8 @@ struct Other {
         return &Calc.sum;
     }
 
-    static int callSum(Fun fn, E x, E y) {
-        return fn(x, y).ok;
+    static int callSum(Fun func, E x, E y) {
+        return func(x, y).ok;
     }
 }
 

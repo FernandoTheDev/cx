@@ -594,10 +594,7 @@ private:
 
         case NodeKind.CastExpr:
             CastExpr n = cast(CastExpr) node;
-            string expr = compileExpr(n.expr);
-            if (n.type_expr.toString() == n.expr.type_expr.toString() && n.expr.kind != NodeKind.StructLit)
-                return expr;
-            return format("(%s)%s", n.type_expr.toString(), expr);
+            return format("(%s)%s", n.type_expr.toString(), compileExpr(n.expr));
 
         case NodeKind.IndexExpr:
             IndexExpr idxExpr = cast(IndexExpr) node;

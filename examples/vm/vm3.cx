@@ -1,0 +1,7 @@
+import std.array;
+import std.stack;
+import std.io;
+
+struct VM {
+    
+}

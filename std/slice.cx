@@ -16,6 +16,7 @@ struct Slice<T> {
     }
 
     bool cmp(T* other) => memcmp(self.ptr, other, self.length) == 0;
+    
     T get(u32 idx) => self.ptr[idx];
 
     void free() {

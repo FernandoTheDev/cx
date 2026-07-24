@@ -21,8 +21,8 @@ struct Mapper<T> {
     }
 
     // map recebe um callback T(T) e aplica sobre o valor interno
-    Mapper<T> map(T(T) fn) {
-        return (Mapper<T>) {fn(self.value)};
+    Mapper<T> map(T(T) func) {
+        return (Mapper<T>) {func(self.value)};
     }
 
     T get() {
@@ -92,11 +92,11 @@ struct SafeBox<T> {
         return b;
     }
 
-    SafeBox<T> map(T(T) fn) {
+    SafeBox<T> map(T(T) func) {
         if !self.valid {
             return self;
         }
-        return SafeBox<T>.ok(fn(self.value));
+        return SafeBox<T>.ok(func(self.value));
     }
 }
 

@@ -106,8 +106,8 @@ class Generic
                     continue;
 
                 // FIX: resolve o problema do template ser gerado
-                if (registry.exists(mangled))
-                    continue;
+                // if (registry.exists(mangled))
+                //     continue;
 
                 gen[mangled] = mangled;
                 registry.set(mangled, new TypeExprUser(TypeExprKind.Struct, mangled, symbol.pos));

@@ -49,6 +49,7 @@ struct Env {
     }
 
     void set(char* name, double val) {
+        // name = null; // bug inserido como teste
         for (u32 i = 0; i < self.count; i++) {
             if self.names[i] === name {
                 self.values[i] = val;

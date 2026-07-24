@@ -8,6 +8,7 @@ enum TokenKind : ubyte
     Include,
 
     // keywords
+    Fn,
     ForEach,
     Is,
     Type,

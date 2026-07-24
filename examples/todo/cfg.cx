@@ -1,0 +1,6 @@
+target(linux)
+int sum(int x, int y) => x + y;
+
+int main() {
+    return 0;
+}

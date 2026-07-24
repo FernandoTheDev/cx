@@ -8,23 +8,28 @@ struct String
     bool owner;
 
     static String from(char* str) => .{str, str.length, false};
+
     static String new(size_t cap) => .{malloc(cap), cap, true};
+    
     char* data() => self.ptr;
 
     char* concat(char* other) overload
     {
         size_t len = other.length;
         size_t newLen = self.length + len + 1;
+        
         char* ptr = malloc(newLen);
         memcpy(ptr, self.ptr, self.length);
         memcpy(ptr + self.length, other, len);
         ptr[newLen - 1] = '\0';
 
-        if self.owner free(self.ptr);
+        if self.owner 
+            free(self.ptr);
 
         self.ptr = ptr;
         self.length = newLen - 1;
         self.owner = true;
+        
         return self.ptr;
     }
 
@@ -36,6 +41,7 @@ struct String
 
     void free()
     {
-        if self.owner free(self.ptr);
+        if self.owner 
+            free(self.ptr);
     }
 }
