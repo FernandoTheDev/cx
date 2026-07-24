@@ -1,5 +1,6 @@
 module backend.codegen;
 
+import backend.cx_builtins;
 import frontend;
 import utils;
 
@@ -18,6 +19,8 @@ private:
 
     TypeExpr actualType;
     TypeExpr fnType;
+
+    bool haveStackTrace, checkNullPtr;
 
     bool isFnStatic;
     bool genHeaderFile;
@@ -113,6 +116,12 @@ private:
         return [userCode, code];
     }
 
+    void checkNullPtrFn(string val, Position pos)
+    {
+        if (checkNullPtr)
+            emit(format(`%s(%s, %d, "%s");`, CXCheckNullPtr, val, pos.start.line, pos.filename), 4);
+    }
+
     void compile(Node node, uint ind)
     {
         if (node is null)
@@ -180,7 +189,6 @@ private:
     void compileEnumDecl(EnumDecl node, uint ind)
     {
         string name = node.name;
-        typedefs ~= format("typedef enum %s %s;", name, name);
         string _data = format("enum %s\n{\n", name);
         /*
         const char* ArrayError_ids[] = {
@@ -197,6 +205,7 @@ private:
         ids ~= "};\n";
         _data ~= "};\n";
         data ~= _data;
+        data ~= format("typedef enum %s %s;", name, name);
         data ~= ids;
     }
 
@@ -461,6 +470,8 @@ private:
             BinaryExpr binary = cast(BinaryExpr) node;
             string left = compileExpr(binary.left);
             string right = compileExpr(binary.right);
+            if (isPtr(binary.left.type_expr))  checkNullPtrFn(left, binary.left.pos);
+            if (isPtr(binary.right.type_expr)) checkNullPtrFn(right, binary.right.pos);
             if (binary.op == TokenKind.EEEquals)
             {
                 if (isString(binary.left.type_expr) && isString(binary.right.type_expr))
@@ -479,6 +490,7 @@ private:
             UnaryExpr un = cast(UnaryExpr) node;
             string op = getOp(un.op);
             string val = compileExpr(un.val);
+            if (op == "*") checkNullPtrFn(val, un.pos);
             return format("%s%s", un.post ? val : op, un.post ? op : val);
 
         case NodeKind.StringLit:
@@ -582,11 +594,15 @@ private:
 
         case NodeKind.CastExpr:
             CastExpr n = cast(CastExpr) node;
-            return format("(%s)%s", n.type_expr.toString(), compileExpr(n.expr));
+            string expr = compileExpr(n.expr);
+            if (n.type_expr.toString() == n.expr.type_expr.toString() && n.expr.kind != NodeKind.StructLit)
+                return expr;
+            return format("(%s)%s", n.type_expr.toString(), expr);
 
         case NodeKind.IndexExpr:
             IndexExpr idxExpr = cast(IndexExpr) node;
             string val = compileExpr(idxExpr.value);
+            checkNullPtrFn(val, idxExpr.pos);
             // writeln(idxExpr.idx);
             // writeln(idxExpr.value);
             // writeln("val: ", val);
@@ -636,12 +652,12 @@ private:
 
     void emitBody(Node[] body, uint ind)
     {
-        bool cond = body.length > 1 || defer.length > 0 || body.length == 0;
-        if (cond)
+        // bool cond = body.length > 1 || defer.length > 0 || body.length == 0;
+        // if (cond)
             emit("{", ind);
         foreach (Node node; body)
             emit(compileStmt(node, ind), ind);
-        if (cond)
+        // if (cond)
             emit("}", ind);
     }
 
@@ -738,18 +754,22 @@ private:
                 id = format("tmp_%d", tmp++);
                 emit(format("%s %s = %s;", c.type_expr, id, compileExpr(c)), 4);
             }
+
             if (id != "")
             {
                 isStatic = types.exists(id);
                 Node callee = (cast(CallExpr) node.right).callee;
+                
                 if (IdentExpr ide = cast(IdentExpr) callee)
                 {
                     if (!isStatic)
                     isStatic = (ide.val in fnStatics) !is null;
                     // writeln(fnStatics, " ", ide.val, " ", isStatic);
                 }
+                
                 if (node.left.type_expr.kind == TypeExprKind.Pointer)
                     fromSelf = true;
+
                 if (id == "self")
                 {
                     fromSelf = true;
@@ -766,15 +786,18 @@ private:
 
         string symbol = isArrow ? "->" : ".";
         string left = compileExpr(node.left);
+        if (isPtr(node.left.type_expr))
+            checkNullPtrFn(left, node.left.pos);
+
         if (type !is null)
             if (type.kind == TypeExprKind.Enum || (type.kind == TypeExprKind.Struct && types.exists(left)))
                 symbol = "_";
 
-        return format("%s%s%s", left, symbol, compileExpr(
-                node.right));
+        return format("%s%s%s", left, symbol, compileExpr(node.right));
     }
 
-    string compileCallExpr(CallExpr node, bool fromMethod = false, string var = "", string typeName = "")
+    string compileCallExpr(CallExpr node, bool fromMethod = false, string var = "", string typeName = "", 
+        bool isStmt = false)
     {
         string args = fromMethod ? var : "";
         if (node.args.length > 0 && fromMethod)
@@ -782,7 +805,10 @@ private:
         for (ulong i; i < node.args.length; i++)
         {
             Node arg = node.args[i];
-            args ~= compileExpr(arg);
+            string val = compileExpr(arg);
+            args ~= val;
+            // writeln(val, " ", node.type_expr, " ", node.pos.toString());
+            if (isPtr(node.type_expr))  checkNullPtrFn(val, node.pos);
             if ((i + 1) < node.args.length)
                 args ~= ", ";
         }
@@ -803,12 +829,20 @@ private:
                 // writefln("Compiler warning: The function '%s' was not found.", callee);
         } else
             callee = typeName == "" ? callee : typeName ~ "_" ~ callee;
-        return format("%s(%s)", clearNameMangling(callee), args);
+        string call = format("%s(%s)", clearNameMangling(callee), args);
+        
+        // special case
+        if (callee == CXPanic)
+            return format(`%s(%s, "%s", %d)`, CXPanic, args, node.pos.filename, node.pos.start.line);
+        
+        return haveStackTrace ? format(`%s("%s", %s, %d, "%s")`, 
+            isStmt ? CXCallVoid : CXCall, callee, call, 
+                node.pos.start.line, node.pos.filename) : call;
     }
 
     string compileCallStmt(CallExpr node, uint ind)
     {
-        return indent(format("%s;", compileCallExpr(node)), ind);
+        return indent(format("%s;", compileCallExpr(node, false, "", "", true)), ind);
     }
 
     string compileRetStmt(ReturnStmt node, uint ind)
@@ -981,9 +1015,15 @@ private:
         return false;
     }
 
+    bool isPtr(TypeExpr type)
+    {
+        return cast(TypeExprPointer) type ? true : false;
+    }
+
 public:
     this(Program program, TypeRegistry types, bool[string] staticFunctions, bool noHeader, bool genHeaderFile, 
-        string headerFile, ImportResolverContext* context, bool isCpp, TypeResolver resolver)
+        string headerFile, ImportResolverContext* context, bool isCpp, TypeResolver resolver, 
+        bool haveStackTrace, bool checkNullPtr)
     {
         this.program = program;
         this.types = types;
@@ -992,6 +1032,8 @@ public:
         this.headerFile = headerFile;
         this.context = context;
         this.resolver = resolver;
+        this.haveStackTrace = haveStackTrace;
+        this.checkNullPtr = checkNullPtr;
         if (noHeader) return;
         cxHeader ~= `
 #ifndef __CLANG_STDINT_H
@@ -1022,7 +1064,108 @@ public:
            typedef int bool;
         #endif
     #endif
-#endif`;
+#endif
+
+#ifndef CX_STACK_MAX
+#define CX_STACK_MAX 1024
+#endif
+
+#ifndef CX_NO_TRACE
+#include <stdlib.h>
+
+typedef struct {
+    const char *fn;
+    const char *from;
+    const char *file;
+    size_t line;
+} CxFrame;
+
+static CxFrame __cx_trace[CX_STACK_MAX];
+static size_t __cx_head = 0;     // next write slot, wraps around
+static size_t __cx_count = 0;    // valid frames, saturates at CX_STACK_MAX
+static size_t __cx_dropped = 0;  // total number overwritten
+
+static inline void cx_push(const char *fn, const char *from, size_t line, const char* file) {
+    __cx_trace[__cx_head].fn = fn;
+    __cx_trace[__cx_head].from = from;
+    __cx_trace[__cx_head].line = line;
+    __cx_trace[__cx_head].file = file;
+
+    __cx_head = (__cx_head + 1) % CX_STACK_MAX;
+
+    if (__cx_count < CX_STACK_MAX)
+        __cx_count++;
+    else
+        __cx_dropped++; // overwrote the oldest frame, O(1)
+}
+
+static inline void cx_pop(void) {
+    if (__cx_count > 0) {
+        __cx_head = (__cx_head == 0) ? CX_STACK_MAX - 1 : __cx_head - 1;
+        __cx_count--;
+    }
+}
+
+static inline void cx_print_stack(void) {
+    if (__cx_count == 0) {
+        printf("  (empty stack trace)\n");
+        return;
+    }
+    if (__cx_dropped > 0) {
+        printf("  ... %zu oldest frame(s) discarded (limit: %d) ...\n",
+               __cx_dropped, CX_STACK_MAX);
+    }
+
+    size_t idx = __cx_head;
+    size_t n = __cx_count;
+
+    idx = (idx == 0) ? CX_STACK_MAX - 1 : idx - 1;
+    CxFrame *top = &__cx_trace[idx];
+    printf("  #%zu %s (%s:%zu)\n", n, top->fn, top->file, top->line);
+
+    for (size_t i = 0; i < n; i++) {
+        CxFrame *f = &__cx_trace[idx];
+        printf("  #%zu %s (%s:%zu)\n", n - 1 - i, f->from, f->file, f->line);
+        idx = (idx == 0) ? CX_STACK_MAX - 1 : idx - 1;
+    }
+}
+
+#else
+
+static inline void cx_print_stack(void) {
+    printf("  (stack trace unavailable: binary compiled without stack trace support)\n");
+}
+
+#endif
+
+#define __CX_PANIC(msg, file, line) do { \
+    fprintf(stderr, "PANIC (%s:%d): %s\n", file, line, msg); \
+    fprintf(stderr, "stack trace:\n"); \
+    cx_print_stack(); \
+    exit(1); \
+} while (0)
+
+#define __CX_CALL(fn_name, call_expr, line, file) \
+    ({ \
+        cx_push(fn_name, __func__, line, file); \
+        __typeof__(call_expr) __cx_ret = (call_expr); \
+        cx_pop(); \
+        __cx_ret; \
+    })
+
+#define __CX_CALL_VOID(fn_name, call_expr, line, file) \
+    do { \
+        cx_push(fn_name, __func__, line, file); \
+        (call_expr); \
+        cx_pop(); \
+    } while (0)
+
+#define __CX_CHECK_NULL_PTR(n, line, file) \
+    do { \
+        if ((n) == NULL) \
+            __CX_PANIC("Attempted to dereference a null pointer.", file, line); \
+    } while (0)
+`;
     }
 
     string[2] compile()
