@@ -38,7 +38,7 @@ void check_diagnostic(Diagnostics d)
 
 struct CXArgs 
 {
-	bool emitc, opt, dbg, verMessage, helpMessage, genHeader, cpp, gcc, noHeader;
+	bool emitc, opt, dbg, verMessage, helpMessage, genHeader, cpp, gcc, stackTrace, checkNullPtr;
 	string[] link, cflags;
 	string output, target;
 }
@@ -47,8 +47,8 @@ pragma(inline, true)
 void showHelp()
 {
 	writeln("Usage:");
-	writeln("		cx <command>");
-	writeln("		cx <file.cx> [options]");
+	writeln("	cx <command>");
+	writeln("	cx <file.cx> [options]");
 	writeln();
 	writeln("Commands:");
 	writeln("        update          Update your compiler to the latest version.");
@@ -70,12 +70,18 @@ void showHelp()
 	writeln("      --cflags      	Pass compilation flags to the C compiler.");
 	writeln("      --cpp      	Compiles with a C++ compiler.");
 	writeln("      --gcc      	Set GCC as the default compiler.");
+	writeln("      --stack-trace  	Enables the compiler's stack-trace system in the binary.");
+	writeln("      --check-null-ptr	Checks if the pointer is null upon each access.");
 	writeln();
 	writeln("Environment:");
 	writeln("  CC                    C compiler used to build the output (default: tcc -> gcc -> cc)");
 	writeln();
 	writeln("Examples:");
 	writeln("  cx update");
+	writeln("  cx build");
+	writeln("  cx run");
+	writeln("  cx compile");
+	writeln();
 	writeln("  cx main.cx");
 	writeln("  cx main.cx --opt -o main");
 	writeln("  cx main.cx --cflags=\"--O2 -o main\"");
@@ -109,28 +115,29 @@ int compile(string filename, ref CXArgs args)
 
 	Diagnostics err = new Diagnostics;
 	TypeRegistry registry = new TypeRegistry;
-	Lexer l = new Lexer(file, dir, content, err, registry);
-	Token[] tokens = l.tokenizer();
-	check_diagnostic(err);
 
+	Lexer l = new Lexer(file, dir, content, err, registry);
 	ImportResolverContext* ctx = new ImportResolverContext(stdDir);
 	generic = new Generic(registry);
-	Parser p = new Parser(tokens, err, registry, generic, ctx);
 	Program program;
 	
-	try
+	try {
+		Token[] tokens = l.tokenizer();
+		check_diagnostic(err);
+		Parser p = new Parser(tokens, err, registry, generic, ctx);
 		program = p.parse();
+	}
 	catch (Exception e)
 	{
 		check_diagnostic(err);
-		writefln("An internal error occurred in the parser: %s", e.message);
+		writefln("An internal error occurred: %s", e.message);
 		if (args.dbg) writeln(e);
 		return 1;
 	}
 
 	check_diagnostic(err);
 
-	// faz duas passagens pra resolução completa
+	// do two passes for the complete solution
 	generic.resolve(program);
 	generic.resolve(program);
 
@@ -146,8 +153,8 @@ int compile(string filename, ref CXArgs args)
 
 	string fileh = args.output ~ (args.cpp ? ".hpp" : ".h");
 	string filec = args.output ~ (args.cpp ? ".cpp" : ".c");
-	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, args.genHeader, fileh, ctx, args.cpp, resolver)
-		.compile();
+	string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, args.genHeader, 
+		fileh, ctx, args.cpp, resolver, args.stackTrace, args.checkNullPtr).compile();
 	check_diagnostic(err);
 	write(filec, src[0]);
 
@@ -177,8 +184,14 @@ int compile(string filename, ref CXArgs args)
 	}
 
 	string c_compiler = environment.get("CC", comp);
-	string command = format("%s %s %s -o %s %s %s", c_compiler, filec, (args.opt ? "-O2" : ""), args.output,
-		args.link.length > 0 ? (args.link.map!(l => format("-l%s", l).array).join(" ")) : "", args.cflags.join(" "));
+	string command = format("%s %s %s %s -o %s %s %s",
+		c_compiler,
+		filec,
+		!args.stackTrace ? "-DCX_NO_TRACE" : "",
+		(args.opt ? "-O2" : ""),
+		args.output,
+		args.link.length > 0 ? (args.link.map!(l => format("-l%s", l).array).join(" ")) : "",
+		args.cflags.join(" "));
 	
 	if (args.dbg)
 		writeln("C Compiler: ", c_compiler);
@@ -225,18 +238,15 @@ int main(string[] argv)
 		return 0;
 	}
 
-	if (OS != "windows")
+	string home = environment.get("HOME", "");
+	stdDir = home ~ "/" ~ ".cx/";
+	if (!home || !exists(stdDir))
 	{
-		string home = environment.get("HOME", "");
-		stdDir = home ~ "/" ~ ".cx/";
-		if (!home || !exists(stdDir))
-		{
-			writefln("An error occurred while validating the compiler installation.");
-			writefln("Some folders may be missing; check if this path is valid: '%s'.", stdDir);
-			writefln(
-				"If it does not exist, then an error occurred while installing the compiler on your system.");
-			return 0;
-		}
+		writefln("An error occurred while validating the compiler installation.");
+		writefln("Some folders may be missing; check if this path is valid: '%s'.", stdDir);
+		writefln(
+			"If it does not exist, then an error occurred while installing the compiler on your system.");
+		return 0;
 	}
 
 	if (isCommand(argv, "update"))
@@ -251,19 +261,21 @@ int main(string[] argv)
 
 	try
 		getopt(argv,
-			"opt", 		  &args.opt,
-			"version|v",  &args.verMessage,
-			"help|h", 	  &args.helpMessage,
-			"debug|d",    &args.dbg,
-			"emit-c",     &args.emitc,
-			"link|L",     &args.link,
-			"output|o",   &args.output,
-			"target", 	  &args.target,
-			"no-header",  &args.noHeader,
-			"gen-header", &args.genHeader,
-			"cflags",     &args.cflags,
-			"cpp", 	      &args.cpp,
-			"gcc", 	      &args.gcc,
+			"opt", 		  	  &args.opt,
+			"version|v",  	  &args.verMessage,
+			"help|h", 	  	  &args.helpMessage,
+			"debug|d",    	  &args.dbg,
+			"emit-c",     	  &args.emitc,
+			"link|L",     	  &args.link,
+			"output|o",   	  &args.output,
+			"target", 	  	  &args.target,
+			"no-header",  	  &noHeader,
+			"gen-header", 	  &args.genHeader,
+			"cflags",     	  &args.cflags,
+			"cpp", 	      	  &args.cpp,
+			"gcc", 	      	  &args.gcc,
+			"stack-trace",	  &args.stackTrace,
+			"check-null-ptr", &args.checkNullPtr,
 		);
 	catch (GetOptException e)
 	{
