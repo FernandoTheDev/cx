@@ -1043,24 +1043,6 @@ public:
 
 #ifndef __STDDEF_H
    #include <stddef.h>
-#endif`;
-
-    if (!isCpp)
-        cxHeader ~= `
-#ifndef NULL
-   #define NULL (void*)0
-#endif
-
-#ifndef __STDBOOL_H
-   #define true  1
-   #define false 0
-   #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-        // ignore
-   #else
-        #ifndef bool
-           typedef int bool;
-        #endif
-    #endif
 #endif
 
 #ifndef CX_STACK_MAX
@@ -1069,6 +1051,7 @@ public:
 
 #ifndef CX_NO_TRACE
 #include <stdlib.h>
+#include <stdio.h>
 
 typedef struct {
     const char *fn;
@@ -1128,6 +1111,7 @@ static inline void cx_print_stack(void) {
 }
 
 #else
+#include <stdio.h>
 
 static inline void cx_print_stack(void) {
     printf("  (stack trace unavailable: binary compiled without stack trace support)\n");
@@ -1162,6 +1146,25 @@ static inline void cx_print_stack(void) {
         if ((n) == NULL) \
             __CX_PANIC("Attempted to dereference a null pointer.", file, line); \
     } while (0)
+`;
+
+    if (!isCpp)
+        cxHeader ~= `
+#ifndef NULL
+   #define NULL (void*)0
+#endif
+
+#ifndef __STDBOOL_H
+   #define true  1
+   #define false 0
+   #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+        // ignore
+   #else
+        #ifndef bool
+           typedef int bool;
+        #endif
+    #endif
+#endif
 `;
     }
 
